@@ -169,3 +169,89 @@ Se o Argon2 nativo falhar no plano de hospedagem: a app tem **Plano B portátil 
 - **Backup:** incluir essa pasta no backup periódico (junto com o dump do MySQL).
 - **Restauração:** restaurar a pasta no mesmo caminho antes de subir a app; os registros no banco (`Arquivo.caminho`) são relativos a `UPLOADS_DIR`.
 - Os arquivos **sobrevivem a restart e redeploy** porque ficam fora do diretório substituído pelo rsync.
+
+---
+
+## 12. Guia passo a passo — CloudLinux Node.js Selector + Passenger (infra CONFIRMADA)
+
+> Ambiente **testado diretamente na TineHost** (probe Node + Passenger + Argon2 + WebSocket, todos OK). Este guia usa os valores reais confirmados. Onde aparecer **[CONFIRMAR]**, verifique no painel na hora.
+
+**Valores confirmados**
+| Item | Valor |
+|---|---|
+| Sistema | Linux EL8 x86_64 (CloudLinux) |
+| HOME | `/home3/medconsultoria` |
+| Application Root | `/home3/medconsultoria/workspace-medconsultoria` |
+| Diretório do domínio | `/home3/medconsultoria/domains/workspace.medconsultoria.com.br` |
+| public_html | `/home3/medconsultoria/domains/workspace.medconsultoria.com.br/public_html` |
+| Uploads persistentes | `/home3/medconsultoria/app-data/workspace-medconsultoria/uploads` |
+| Node | **20.19.2** · npm 10.8.2 |
+| Banco | **MariaDB 10.6.22** em `localhost` |
+| Modo | **Production** · Passenger · startup `app.js` |
+| Domínio | `https://workspace.medconsultoria.com.br` |
+| Repositório | `https://github.com/thi-garcia/workspace-medconsultoria` (privado) |
+
+### Passo 1 — Subdomínio + SSL (DirectAdmin)
+1. Em **Domain Setup**, garanta que `workspace.medconsultoria.com.br` existe e aponta para a conta.
+2. Em **SSL Certificates**, emita **Let's Encrypt** para o subdomínio (Force HTTPS ligado).
+3. **Remova/renomeie** o `index.html` padrão em `public_html` (senão ele intercepta o domínio e o Passenger não assume). Ex.: `mv public_html/index.html public_html/_index.html.bak`.
+
+### Passo 2 — Criar a aplicação Node (CloudLinux Node.js Selector)
+No painel **Setup Node.js App** → **Create Application**:
+- **Node.js version:** `20.19.2`.
+- **Application mode:** `Production`.
+- **Application root:** `workspace-medconsultoria` (relativo ao HOME → `/home3/medconsultoria/workspace-medconsultoria`).
+- **Application URL:** `workspace.medconsultoria.com.br` (raiz do domínio).
+- **Application startup file:** `app.js` (um shim que carrega o servidor buildado — ver Passo 4).
+- Criar. O painel gera um **virtualenv** e o registro Passenger em `public_html/.htaccess`. Anote o comando **"Enter to the virtual environment"** (`source /home3/medconsultoria/nodevenv/.../bin/activate`) para instalar deps com o Node certo.
+
+### Passo 3 — Pasta persistente de uploads
+```bash
+mkdir -p /home3/medconsultoria/app-data/workspace-medconsultoria/uploads
+```
+Fica **fora** do Application Root e do `public_html` → o deploy (`rsync --delete`) não a toca. No `.env` de produção: `UPLOADS_DIR=/home3/medconsultoria/app-data/workspace-medconsultoria/uploads`.
+
+### Passo 4 — Enviar o build + startup
+1. Na sua máquina: `pnpm build:deploy` (gera `apps/api/dist` auto-contido: `server.js` + `public/` + `prisma/` + `package.json` de produção + `preflight.mjs`).
+2. Ajuste o `deploy.sh` (`.env.deploy`): `DEPLOY_PATH=/home3/medconsultoria/workspace-medconsultoria`, host/usuário/porta/chave SSH **[CONFIRMAR]**.
+3. `./deploy.sh` faz: `rsync` do `dist/` → Application Root; via SSH, `npm install --omit=dev`, `prisma generate`, `prisma migrate deploy`, restart.
+4. **Startup `app.js`** (na raiz do bundle): um shim mínimo que importa o servidor ESM buildado — `import("./server.js")` (o bundle coloca `server.js` na raiz do Application Root). Se preferir, aponte o **startup file** direto para `server.js` no painel, em vez de usar o shim.
+
+### Passo 5 — Variáveis de ambiente (`.env` na raiz do Application Root)
+```
+NODE_ENV=production
+API_PORT=[porta que o Passenger injeta — normalmente via variável; CONFIRMAR]
+DATABASE_URL=mysql://USUARIO:SENHA@localhost:3306/BANCO   # MariaDB local [CONFIRMAR user/senha/banco]
+SESSION_SECRET=<gerar 32+ bytes: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
+WEB_ORIGIN=https://workspace.medconsultoria.com.br
+UPLOADS_DIR=/home3/medconsultoria/app-data/workspace-medconsultoria/uploads
+# Opcionais (a IA/e-mail ligam se preenchidos):
+OPENAI_API_KEY=...        # rotacionar antes de usar
+SMTP_HOST=... SMTP_PORT=587 SMTP_USER=... SMTP_PASS=... SMTP_FROM=...
+```
+> O `.env` **nunca** é versionado nem sobrescrito pelo deploy (`rsync --exclude .env`).
+
+### Passo 6 — Banco (MariaDB 10.6) + migrations + seed do ROOT
+1. Em **MySQL Management**, crie o banco + usuário e conceda permissão. Monte a `DATABASE_URL` com `@localhost:3306`.
+2. As **migrations** rodam no deploy (`prisma migrate deploy`). Para rodar à mão: dentro do virtualenv, `npx prisma migrate deploy`.
+3. **Seed do 1º ROOT:** com `SEED_ROOT_EMAIL/PASSWORD/NOME` no `.env`, rode `node prisma/seed.js` (ou `npx prisma db seed` se configurado). **Não** rode o `demo-seed` (dados fictícios) em produção.
+
+### Passo 7 — Preflight (OBRIGATÓRIO antes de considerar publicado)
+Dentro do Application Root, no virtualenv:
+```bash
+node preflight.mjs
+```
+Só siga se **todas as verificações CRÍTICAS** passarem (Argon2, MySQL, migrations, UPLOADS_DIR absoluto+gravável, SESSION_SECRET). Ver §10.
+
+### Passo 8 — Restart, logs, WebSocket
+- **Restart:** botão **Restart** no Node Selector, ou `touch tmp/restart.txt` no Application Root (Passenger relê).
+- **Logs:** `stderr.log`/`stdout.log` do Passenger (no painel ou em `~/logs`), + o `ErrorLog` no painel **Sistema** da app (ROOT).
+- **WebSocket:** confirmado funcional na TineHost com `transports: ["websocket"]`. O Passenger encaminha o upgrade; nada extra a configurar. Se algum dia cair para long-polling, revisar `.htaccess`/proxy.
+
+### Passo 9 — Atualização de versão (deploys futuros)
+`pnpm build:deploy` → `./deploy.sh` (rsync + migrate + restart). O `.env` e a pasta de uploads são preservados.
+
+### Passo 10 — Backup e rollback
+- **Backup:** `mysqldump` do banco (cron) **+** a pasta `app-data/.../uploads`, guardados fora do servidor.
+- **Rollback:** manter o `dist/` anterior; para rollback simples, versionar releases em `releases/<data>` e apontar um symlink (posso adaptar o `deploy.sh` quando formos publicar).
+- **Restauração:** restaurar o dump do MySQL + a pasta de uploads no mesmo caminho, e apontar a app para eles.
