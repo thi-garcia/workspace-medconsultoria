@@ -11,6 +11,9 @@ const schema = z.object({
   SESSION_SECRET: z.string().min(16, "SESSION_SECRET deve ter ao menos 16 caracteres"),
   WEB_ORIGIN: z.string().url().default("http://localhost:4310"),
   OPENAI_API_KEY: z.string().optional(),
+  // Interruptor GLOBAL da IA (privacidade): "false"/"0" desliga a IA MESMO com chave presente.
+  // Útil para cortar o envio de dados à OpenAI sem remover a chave. Ver docs/IA_PRIVACIDADE.md.
+  IA_ENABLED: z.string().optional(),
   // Pasta persistente onde ficam os arquivos enviados (upload). Relativa ao cwd do
   // processo ou absoluta. Na TineHost deve apontar para uma pasta FORA do diretório do
   // deploy (que é sobrescrito no rsync) e entrar no backup. Ver DECISIONS (pendência de deploy).
@@ -33,7 +36,8 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 export const isProd = config.NODE_ENV === "production";
-/** IA (OpenAI) só fica disponível se houver chave configurada. */
-export const isAiEnabled = !!config.OPENAI_API_KEY;
+/** IA (OpenAI) disponível = chave presente E não desligada globalmente (IA_ENABLED != false/0). */
+const iaDesligada = ["false", "0", "off", "no"].includes((config.IA_ENABLED ?? "").trim().toLowerCase());
+export const isAiEnabled = !!config.OPENAI_API_KEY && !iaDesligada;
 /** E-mail "real" só quando SMTP está completo; caso contrário, modo dev (link em tela). */
 export const isEmailReal = !!(config.SMTP_HOST && config.SMTP_USER && config.SMTP_PASS);

@@ -19,6 +19,16 @@ enum Role {
   CLIENTE
 }
 
+/// Situação comercial da conta (Cliente). Estrutura controlada (enum) — ver decisão técnica #1.
+/// PROSPECT/NEGOCIACAO/PERDIDO = estados do funil; ATIVO/INATIVO = cliente de verdade.
+enum SituacaoComercial {
+  PROSPECT
+  NEGOCIACAO
+  ATIVO
+  INATIVO
+  PERDIDO
+}
+
 /// Usuário interno ou cliente do Portal.
 model User {
   id           String    @id @default(cuid())
@@ -194,7 +204,7 @@ model Cliente {
   telefone      String?
   observacoes   String?     @db.Text
   // Estágio na relação comercial: PROSPECT | NEGOCIACAO | ATIVO | PERDIDO (usado a partir da Fase 3).
-  situacaoComercial String  @default("ATIVO")
+  situacaoComercial SituacaoComercial @default(ATIVO)
   responsavelId String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -254,13 +264,18 @@ model Contato {
 
 /// Anotação polimórfica (entidadeTipo + entidadeId). Ex.: ("cliente", <id>).
 /// Junto com o ActivityLog forma a timeline da entidade.
+/// Nota da timeline (cliente/lead). HISTÓRICO IMUTÁVEL: o conteúdo NUNCA é editado/apagado.
+/// Correção/complemento = nova nota; "esconder" = arquivar (arquivadaEm) sem apagar. Ver decisão #2.
 model Nota {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   autorId      String?
   entidadeTipo String
   entidadeId   String
-  conteudo     String   @db.Text
-  createdAt    DateTime @default(now())
+  conteudo     String    @db.Text
+  createdAt    DateTime  @default(now())
+  /// Arquivamento reversível (não apaga o histórico). Nota arquivada some das visões ativas.
+  arquivadaEm  DateTime?
+  arquivadaPorId String?
 
   autor User? @relation(fields: [autorId], references: [id], onDelete: SetNull)
 

@@ -339,3 +339,16 @@ export function addNota(input: CreateNotaInput, userId: string) {
     include: { autor: { select: { nome: true } } },
   });
 }
+
+/**
+ * Arquiva/desarquiva uma nota da timeline. **Histórico IMUTÁVEL**: nunca edita nem apaga o
+ * `conteudo` — só marca/desmarca `arquivadaEm` (some das visões ativas, mas continua registrada).
+ * Correção/complemento de uma nota = criar uma NOVA nota (addNota). Ver decisão técnica #2.
+ */
+export function arquivarNota(notaId: string, userId: string, arquivar: boolean) {
+  return prisma.nota.update({
+    where: { id: notaId },
+    data: arquivar ? { arquivadaEm: new Date(), arquivadaPorId: userId } : { arquivadaEm: null, arquivadaPorId: null },
+    include: { autor: { select: { nome: true } } },
+  });
+}

@@ -77,6 +77,11 @@ export const clientesRouter = router({
     .input(createNotaSchema)
     .mutation(({ input, ctx }) => service.addNota(input, ctx.user.id)),
 
+  /** Arquiva/desarquiva uma nota (histórico imutável — nunca edita/apaga o conteúdo). */
+  arquivarNota: funcionarioProcedure
+    .input(z.object({ notaId: z.string().min(1), arquivar: z.boolean() }))
+    .mutation(({ input, ctx }) => service.arquivarNota(input.notaId, ctx.user.id, input.arquivar)),
+
   // ── Serviços contratados do cliente (ficha) ──
   servicos: funcionarioProcedure
     .input(z.object({ id: z.string() }))
