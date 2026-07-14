@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown, Check, X, Search } from "lucide-react";
 import { cn } from "@app/ui";
@@ -40,6 +40,8 @@ export function Combobox({
   const ref = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const listId = useId();
+  const opcaoId = (i: number) => `${listId}-opt-${i}`;
   // Dropdown flutua em portal (fixed) — não empurra nem rola o modal onde o campo está.
   const dropStyle = useAnchoredStyle(ref, open, 240);
 
@@ -123,6 +125,12 @@ export function Combobox({
           onKeyDown={onKeyDown}
           className="w-full cursor-pointer bg-transparent outline-none placeholder:text-muted-foreground"
           autoComplete="off"
+          role="combobox"
+          aria-expanded={open}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-haspopup="listbox"
+          aria-activedescendant={open && filtered[active] ? opcaoId(active) : undefined}
         />
         {allowClear && value && !open ? (
           <button
@@ -145,6 +153,8 @@ export function Combobox({
         createPortal(
           <div
             ref={panelRef}
+            id={listId}
+            role="listbox"
             style={dropStyle}
             className="z-[70] animate-scale-in overflow-y-auto rounded-lg border bg-popover p-1 shadow-lg"
           >
@@ -155,6 +165,9 @@ export function Combobox({
               <button
                 key={opt.value}
                 type="button"
+                role="option"
+                id={opcaoId(i)}
+                aria-selected={opt.value === value}
                 onMouseEnter={() => setActive(i)}
                 onClick={() => escolher(opt)}
                 className={cn(

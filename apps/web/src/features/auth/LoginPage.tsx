@@ -43,10 +43,12 @@ export function LoginPage() {
               autoFocus
               placeholder="voce@medconsultoria.com.br"
               className="pl-10"
+              aria-invalid={!!errors.email}
+              aria-describedby={errors.email ? "email-erro" : undefined}
               {...register("email")}
             />
           </div>
-          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+          {errors.email && <p id="email-erro" role="alert" className="text-xs text-destructive">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-1.5">
@@ -59,6 +61,8 @@ export function LoginPage() {
               autoComplete="current-password"
               placeholder="••••••••"
               className="pl-10 pr-10"
+              aria-invalid={!!errors.password}
+              aria-describedby={errors.password ? "password-erro" : undefined}
               {...register("password")}
             />
             <button
@@ -71,7 +75,7 @@ export function LoginPage() {
               {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             </button>
           </div>
-          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          {errors.password && <p id="password-erro" role="alert" className="text-xs text-destructive">{errors.password.message}</p>}
           <div className="flex justify-end pt-0.5">
             <a href="/esqueci-senha" className="text-xs font-medium text-primary hover:underline">
               Esqueci minha senha
@@ -80,7 +84,7 @@ export function LoginPage() {
         </div>
 
         {login.error && (
-          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+          <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>{login.error.message}</span>
           </div>
