@@ -1,0 +1,14 @@
+node_modules
+**/dist
+**/build
+.turbo
+pnpm-lock.yaml
+packages/db/prisma/migrations
+.playwright-mcp
+apps/api/dist
+apps/web/dist
+coverage
+playwright-report
+test-results
+*.min.js
+brand
