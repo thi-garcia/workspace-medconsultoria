@@ -1,6 +1,7 @@
 import { test, expect } from "@playwright/test";
 
-// Login inválido — contexto SEM sessão (fresh).
+const PASS = process.env.E2E_PASSWORD ?? "medconsultoria123";
+
 test.describe("Auth — login inválido", () => {
   test("mostra erro e permanece no login", async ({ page }) => {
     await page.goto("/login");
@@ -12,12 +13,16 @@ test.describe("Auth — login inválido", () => {
   });
 });
 
-// Logout — usa a sessão ADMIN salva.
 test.describe("Auth — logout", () => {
-  test.use({ storageState: "e2e/.auth/admin.json" });
+  // NÃO reutiliza a sessão compartilhada (admin.json): faz login PRÓPRIO para não invalidar
+  // a sessão usada pelos outros testes ao deslogar (isolamento).
   test("sai da conta e volta ao login", async ({ page }) => {
-    await page.goto("/");
-    // Abre o menu do usuário (último botão da sidebar) e clica em "Sair da conta".
+    await page.goto("/login");
+    await page.locator('input[type="email"]').fill("thais.garcia@medconsultoria.com.br");
+    await page.locator('input[type="password"]').fill(PASS);
+    await page.getByRole("button", { name: /entrar/i }).click();
+    await expect(page.locator('input[type="password"]')).toHaveCount(0, { timeout: 15000 });
+
     await page.locator("aside").getByRole("button").last().click();
     await page.getByRole("button", { name: /sair da conta/i }).click();
     await expect(page.locator('input[type="password"]')).toBeVisible({ timeout: 15000 });
