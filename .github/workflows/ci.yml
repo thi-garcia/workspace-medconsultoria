@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: medconsultoria
+          MYSQL_DATABASE: medconsultoria
+          MYSQL_USER: medconsultoria
+          MYSQL_PASSWORD: medconsultoria
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmedconsultoria"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      # Banco de teste isolado (o CI cria e migra o *_test). Segredo de teste, não de produção.
+      DATABASE_URL: "mysql://medconsultoria:medconsultoria@127.0.0.1:3307/medconsultoria"
+      SESSION_SECRET: "ci-session-secret-32bytes-minimo-xxxxxx"
+      NODE_ENV: "test"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.19.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.2"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/db exec prisma generate
+      - name: Migrar bancos (dev + isolado _test)
+        run: |
+          pnpm --filter @app/db exec prisma migrate deploy
+          mysql -h 127.0.0.1 -P 3307 -umedconsultoria -pmedconsultoria -e "CREATE DATABASE IF NOT EXISTS medconsultoria_test CHARACTER SET utf8mb4;"
+          DATABASE_URL="mysql://medconsultoria:medconsultoria@127.0.0.1:3307/medconsultoria_test" pnpm --filter @app/db exec prisma migrate deploy
+      - run: pnpm lint
+      - run: pnpm -r typecheck
+      - name: Testes unitários e de integração (Vitest)
+        run: pnpm -r test
+      - run: pnpm -w build
