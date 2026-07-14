@@ -60,4 +60,15 @@ const pkg = {
 };
 writeFileSync(resolve(apiDist, "package.json"), JSON.stringify(pkg, null, 2) + "\n");
 
-console.log("✓ Bundle pronto em apps/api/dist/ (server.js + public/ + prisma/ + package.json)");
+// 4) Startup file para o CloudLinux Passenger. O painel roda o startup via require() (CommonJS);
+// como o server.js é ESM (type: module), fazemos um shim .cjs que o carrega por import() dinâmico
+// (funciona em CJS) — evita ERR_REQUIRE_ESM. Aponte a "Application startup file" para `app.cjs`.
+// O Passenger intercepta o `.listen()` do Fastify e gerencia a porta/socket (API_PORT é ignorado
+// sob Passenger). Ver docs/DEPLOY.md §12.
+const startup = `// Gerado por bundle-deploy.mjs — startup file do CloudLinux Passenger (NÃO editar à mão).
+process.on("unhandledRejection", (e) => { console.error(e); process.exit(1); });
+import("./server.js").catch((e) => { console.error("Falha ao iniciar server.js:", e); process.exit(1); });
+`;
+writeFileSync(resolve(apiDist, "app.cjs"), startup);
+
+console.log("✓ Bundle pronto em apps/api/dist/ (server.js + public/ + prisma/ + package.json + app.cjs)");

@@ -187,7 +187,7 @@ Se o Argon2 nativo falhar no plano de hospedagem: a app tem **Plano B portátil 
 | Uploads persistentes | `/home3/medconsultoria/app-data/workspace-medconsultoria/uploads` |
 | Node | **20.19.2** · npm 10.8.2 |
 | Banco | **MariaDB 10.6.22** em `localhost` |
-| Modo | **Production** · Passenger · startup `app.js` |
+| Modo | **Production** · Passenger · startup `app.cjs` |
 | Domínio | `https://workspace.medconsultoria.com.br` |
 | Repositório | `https://github.com/thi-garcia/workspace-medconsultoria` (privado) |
 
@@ -202,7 +202,7 @@ No painel **Setup Node.js App** → **Create Application**:
 - **Application mode:** `Production`.
 - **Application root:** `workspace-medconsultoria` (relativo ao HOME → `/home3/medconsultoria/workspace-medconsultoria`).
 - **Application URL:** `workspace.medconsultoria.com.br` (raiz do domínio).
-- **Application startup file:** `app.js` (um shim que carrega o servidor buildado — ver Passo 4).
+- **Application startup file:** `app.cjs` (shim CommonJS gerado pelo `bundle-deploy` que carrega o servidor ESM por import dinâmico — ver Passo 4).
 - Criar. O painel gera um **virtualenv** e o registro Passenger em `public_html/.htaccess`. Anote o comando **"Enter to the virtual environment"** (`source /home3/medconsultoria/nodevenv/.../bin/activate`) para instalar deps com o Node certo.
 
 ### Passo 3 — Pasta persistente de uploads
@@ -215,12 +215,12 @@ Fica **fora** do Application Root e do `public_html` → o deploy (`rsync --dele
 1. Na sua máquina: `pnpm build:deploy` (gera `apps/api/dist` auto-contido: `server.js` + `public/` + `prisma/` + `package.json` de produção + `preflight.mjs`).
 2. Ajuste o `deploy.sh` (`.env.deploy`): `DEPLOY_PATH=/home3/medconsultoria/workspace-medconsultoria`, host/usuário/porta/chave SSH **[CONFIRMAR]**.
 3. `./deploy.sh` faz: `rsync` do `dist/` → Application Root; via SSH, `npm install --omit=dev`, `prisma generate`, `prisma migrate deploy`, restart.
-4. **Startup `app.js`** (na raiz do bundle): um shim mínimo que importa o servidor ESM buildado — `import("./server.js")` (o bundle coloca `server.js` na raiz do Application Root). Se preferir, aponte o **startup file** direto para `server.js` no painel, em vez de usar o shim.
+4. **Startup `app.cjs`** (gerado automaticamente pelo `bundle-deploy`, fica na raiz do Application Root ao lado de `server.js`): o Passenger carrega o startup via `require()` (CommonJS), então usar `.cjs` que faz `import("./server.js")` evita o `ERR_REQUIRE_ESM` (o `server.js` é ESM). **Validado localmente**: `node app.cjs` sobe a API e responde `/health`. O Passenger **intercepta o `.listen()`** do Fastify e gerencia a porta/socket — por isso `API_PORT` é ignorado sob Passenger (não precisa casar com a porta do painel).
 
 ### Passo 5 — Variáveis de ambiente (`.env` na raiz do Application Root)
 ```
 NODE_ENV=production
-API_PORT=[porta que o Passenger injeta — normalmente via variável; CONFIRMAR]
+# API_PORT: ignorado sob Passenger (ele gerencia a porta). Deixe o default ou omita.
 DATABASE_URL=mysql://USUARIO:SENHA@localhost:3306/BANCO   # MariaDB local [CONFIRMAR user/senha/banco]
 SESSION_SECRET=<gerar 32+ bytes: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))">
 WEB_ORIGIN=https://workspace.medconsultoria.com.br
