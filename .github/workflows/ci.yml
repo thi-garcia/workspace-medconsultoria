@@ -47,3 +47,58 @@ jobs:
       - name: Testes unitários e de integração (Vitest)
         run: pnpm -r test
       - run: pnpm -w build
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: medconsultoria
+          MYSQL_DATABASE: medconsultoria
+          MYSQL_USER: medconsultoria
+          MYSQL_PASSWORD: medconsultoria
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmedconsultoria"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      DATABASE_URL: "mysql://medconsultoria:medconsultoria@127.0.0.1:3307/medconsultoria"
+      SESSION_SECRET: "ci-e2e-session-secret-32bytes-minimo-xx"
+      WEB_ORIGIN: "http://localhost:4310"
+      SEED_ROOT_EMAIL: "root@medconsultoria.com.br"
+      SEED_ROOT_PASSWORD: "medconsultoria123"
+      SEED_ROOT_NOME: "Root"
+      E2E_PASSWORD: "medconsultoria123"
+      NODE_ENV: "development"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.19.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.2"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/db exec prisma generate
+      - run: pnpm --filter @app/db exec prisma migrate deploy
+      - name: Seed determinístico (ROOT + equipe/cliente demo)
+        run: |
+          pnpm db:seed
+          pnpm db:demo
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Subir app (api + web) e aguardar health
+        run: |
+          pnpm dev > dev.log 2>&1 &
+          timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'
+      - name: E2E (Playwright)
+        run: pnpm exec playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 7
