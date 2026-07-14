@@ -123,7 +123,12 @@ export function CardPanel({
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       {/* Quadro de altura fixa: cabeçalho fixo + duas colunas; só as LISTAS rolam por dentro (o card nunca rola). */}
-      <div className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-card shadow-xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="cardpanel-titulo"
+        className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border bg-card shadow-xl"
+      >
         {card.isLoading || !c ? (
           <div className="flex h-48 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -133,7 +138,7 @@ export function CardPanel({
             {/* ── Cabeçalho (fixo) ── */}
             <div className="flex shrink-0 items-start justify-between gap-4 border-b p-5">
               <div className="min-w-0">
-                <h2 className="truncate text-lg font-semibold text-primary">{c.titulo}</h2>
+                <h2 id="cardpanel-titulo" className="truncate text-lg font-semibold text-primary">{c.titulo}</h2>
                 <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
                   <Badge variant={prioridadeVariant[c.prioridade]}>{PRIORIDADE_LABEL[c.prioridade]}</Badge>
                   {c.prazo && <span>Prazo: {dataUTC(c.prazo)}</span>}
