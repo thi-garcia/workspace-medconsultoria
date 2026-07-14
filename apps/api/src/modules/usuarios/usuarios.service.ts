@@ -1,0 +1,369 @@
+import { TRPCError } from "@trpc/server";
+import { prisma } from "@app/db";
+import { ROLE_LEVEL, type Role } from "@app/shared";
+import type { CreateUsuarioInput, UpdateUsuarioInput, InviteUsuarioInput } from "@app/shared";
+import { hashPassword } from "../../lib/password.js";
+import { criarToken } from "../../lib/tokens.js";
+import { enviarEmailTemplate } from "../emails/enviados.service.js";
+import { config } from "../../config.js";
+
+/** Convite válido por 72h. */
+const CONVITE_TTL_MS = 72 * 60 * 60 * 1000;
+
+/**
+ * Gera o token de convite, "envia" o e-mail e devolve o link (só em modo dev).
+ * O template acompanha o PAPEL: CLIENTE recebe as boas-vindas quentes do Portal;
+ * a equipe interna recebe o convite padrão do Workspace.
+ */
+async function gerarConvite(userId: string, nome: string, email: string, role: Role) {
+  const token = await criarToken(userId, "CONVITE", CONVITE_TTL_MS);
+  const url = `${config.WEB_ORIGIN}/definir-senha?token=${token}`;
+  const template = role === "CLIENTE" ? "portal_boas_vindas" : "convite";
+  const { enviado } = await enviarEmailTemplate(template, email, { nome, link: url });
+  // Só devolvemos o link ao navegador quando o e-mail NÃO saiu (modo dev ou falha de
+  // SMTP) — é o fallback para o admin enviar manualmente. Se enviou, o link é privado.
+  return { conviteUrl: enviado ? null : url, emailEnviado: enviado };
+}
+
+/**
+ * Garante o acesso ao Portal do Cliente de forma AUTOMÁTICA (captação, novo cliente,
+ * conversão): cria a conta CLIENTE pendente ligada ao cliente e envia o e-mail de
+ * boas-vindas com o link de acesso. Idempotente e best-effort — se já existe conta
+ * (por cliente ou por e-mail), não recria nem reenvia (retorna `jaTinhaAcesso`).
+ */
+export async function garantirAcessoPortal(
+  clienteId: string,
+  nome: string,
+  email: string | null,
+): Promise<{ criou: boolean; jaTinhaAcesso: boolean; emailEnviado: boolean; conviteUrl: string | null }> {
+  const nada = { criou: false, jaTinhaAcesso: false, emailEnviado: false, conviteUrl: null };
+  if (!email) return nada;
+
+  // Já existe conta de Portal para este cliente? (continuidade lead → cliente)
+  const doCliente = await prisma.user.findFirst({
+    where: { clienteId, role: "CLIENTE", deletedAt: null },
+    select: { id: true },
+  });
+  if (doCliente) return { ...nada, jaTinhaAcesso: true };
+
+  // Já existe QUALQUER usuário com este e-mail? Não duplica acesso.
+  const doEmail = await prisma.user.findFirst({ where: { email, deletedAt: null }, select: { id: true } });
+  if (doEmail) return { ...nada, jaTinhaAcesso: true };
+
+  const usuario = await prisma.user.create({
+    data: { nome: nome.trim(), email, passwordHash: null, ativo: false, role: "CLIENTE", clienteId },
+    select: { id: true, nome: true, email: true },
+  });
+  const r = await gerarConvite(usuario.id, usuario.nome, usuario.email, "CLIENTE");
+  return { criou: true, jaTinhaAcesso: false, ...r };
+}
+
+/** Campos públicos de um usuário (nunca expõe passwordHash). */
+const publicSelect = {
+  id: true,
+  nome: true,
+  email: true,
+  role: true,
+  ativo: true,
+  avatarUrl: true,
+  clienteId: true,
+  createdAt: true,
+  cliente: { select: { nome: true } },
+} as const;
+
+/**
+ * Impede escalonamento de privilégio: só se atribui papel **estritamente abaixo**
+ * do seu (ex.: ADMIN cria Funcionário/Cliente; só ROOT cria ADMIN). Assim um admin
+ * não pode criar/promover outro admin nem tomar conta de um par.
+ */
+export function assertPodeAtribuir(atorRole: Role, alvoRole: Role) {
+  if (ROLE_LEVEL[alvoRole] >= ROLE_LEVEL[atorRole]) {
+    throw new TRPCError({
+      code: "FORBIDDEN",
+      message: "Você só pode atribuir papéis abaixo do seu.",
+    });
+  }
+}
+
+/** Garante que o cliente do escopo do Portal existe e não foi removido. */
+async function assertClienteValido(clienteId: string) {
+  const cliente = await prisma.cliente.findFirst({
+    where: { id: clienteId, deletedAt: null },
+    select: { id: true },
+  });
+  if (!cliente) throw new TRPCError({ code: "BAD_REQUEST", message: "Cliente inválido." });
+}
+
+export async function listUsuarios() {
+  const users = await prisma.user.findMany({
+    where: { deletedAt: null },
+    select: { ...publicSelect, passwordHash: true },
+    orderBy: [{ ativo: "desc" }, { nome: "asc" }],
+  });
+  // "Pendente" = convidado mas ainda não definiu a senha. Nunca expomos o hash.
+  return users.map(({ passwordHash, ...u }) => ({ ...u, pendente: passwordHash === null }));
+}
+
+/** Equipe interna ativa (para atribuir responsáveis) — sem clientes de Portal. */
+export function listEquipe() {
+  return prisma.user.findMany({
+    where: { ativo: true, deletedAt: null, role: { not: "CLIENTE" } },
+    select: { id: true, nome: true, avatarUrl: true },
+    orderBy: { nome: "asc" },
+  });
+}
+
+export async function createUsuario(atorRole: Role, input: CreateUsuarioInput) {
+  assertPodeAtribuir(atorRole, input.role);
+
+  const clienteId = input.clienteId || null;
+  if (input.role === "CLIENTE") {
+    if (!clienteId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Selecione o cliente para o acesso ao Portal.",
+      });
+    }
+    await assertClienteValido(clienteId);
+  }
+
+  const existe = await prisma.user.findUnique({ where: { email: input.email } });
+  if (existe) {
+    throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com este e-mail." });
+  }
+
+  return prisma.user.create({
+    data: {
+      nome: input.nome.trim(),
+      email: input.email,
+      passwordHash: await hashPassword(input.senha),
+      role: input.role,
+      clienteId: input.role === "CLIENTE" ? clienteId : null,
+    },
+    select: publicSelect,
+  });
+}
+
+/**
+ * Convida um usuário: cria o cadastro PENDENTE (sem senha, inativo) e dispara o
+ * convite. A pessoa define a própria senha pelo link (fluxo seguro, sem o admin
+ * conhecer a senha). Devolve o link só em modo dev.
+ */
+export async function convidarUsuario(atorRole: Role, input: InviteUsuarioInput) {
+  assertPodeAtribuir(atorRole, input.role);
+
+  const clienteId = input.clienteId || null;
+  if (input.role === "CLIENTE") {
+    if (!clienteId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Selecione o cliente para o acesso ao Portal." });
+    }
+    await assertClienteValido(clienteId);
+  }
+
+  const existe = await prisma.user.findFirst({ where: { email: input.email, deletedAt: null } });
+  if (existe) {
+    throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com este e-mail." });
+  }
+
+  const usuario = await prisma.user.create({
+    data: {
+      nome: input.nome.trim(),
+      email: input.email,
+      passwordHash: null, // pendente até aceitar o convite
+      ativo: false,
+      role: input.role,
+      clienteId: input.role === "CLIENTE" ? clienteId : null,
+    },
+    select: publicSelect,
+  });
+
+  const convite = await gerarConvite(usuario.id, usuario.nome, usuario.email, usuario.role);
+  return { usuario, ...convite };
+}
+
+/** Reenvia o convite (gera novo link e invalida o anterior) para um usuário ainda pendente. */
+export async function reenviarConvite(atorRole: Role, id: string) {
+  const alvo = await prisma.user.findFirst({
+    where: { id, deletedAt: null },
+    select: { id: true, nome: true, email: true, role: true, passwordHash: true },
+  });
+  if (!alvo) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
+  }
+  if (alvo.passwordHash !== null) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Este usuário já definiu a senha." });
+  }
+  if (ROLE_LEVEL[alvo.role] >= ROLE_LEVEL[atorRole]) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão sobre este usuário." });
+  }
+  const convite = await gerarConvite(alvo.id, alvo.nome, alvo.email, alvo.role);
+  return { ...convite, email: alvo.email };
+}
+
+export async function updateUsuario(atorId: string, atorRole: Role, input: UpdateUsuarioInput) {
+  const alvo = await prisma.user.findUnique({ where: { id: input.id } });
+  if (!alvo || alvo.deletedAt) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
+  }
+  // Só se gerencia OUTROS usuários estritamente abaixo do seu papel (a si mesmo
+  // sempre — com as restrições de auto-edição abaixo). Impede tomada de par.
+  if (input.id !== atorId && ROLE_LEVEL[alvo.role] >= ROLE_LEVEL[atorRole]) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão sobre este usuário." });
+  }
+
+  const data: {
+    nome?: string;
+    email?: string;
+    role?: Role;
+    ativo?: boolean;
+    clienteId?: string | null;
+    passwordHash?: string;
+  } = {};
+
+  if (input.nome !== undefined) data.nome = input.nome.trim();
+
+  // Troca de e-mail: valida unicidade entre usuários ativos (ignora tombstones de excluídos).
+  if (input.email !== undefined && input.email !== alvo.email) {
+    const emailEmUso = await prisma.user.findFirst({
+      where: { email: input.email, deletedAt: null, id: { not: input.id } },
+      select: { id: true },
+    });
+    if (emailEmUso) {
+      throw new TRPCError({ code: "CONFLICT", message: "Já existe um usuário com este e-mail." });
+    }
+    data.email = input.email;
+  }
+
+  // Só valida/aplica papel quando ele realmente muda.
+  if (input.role !== undefined && input.role !== alvo.role) {
+    if (input.id === atorId) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode alterar o próprio papel." });
+    }
+    assertPodeAtribuir(atorRole, input.role);
+    data.role = input.role;
+  }
+
+  if (input.ativo !== undefined) {
+    if (input.id === atorId && input.ativo === false) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode desativar a própria conta." });
+    }
+    data.ativo = input.ativo;
+  }
+
+  const finalRole = data.role ?? alvo.role;
+  const clienteInformado = input.clienteId !== undefined;
+  const finalClienteId = clienteInformado ? input.clienteId || null : alvo.clienteId;
+
+  if (finalRole === "CLIENTE") {
+    if (!finalClienteId) {
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: "Cliente é obrigatório para acesso ao Portal.",
+      });
+    }
+    await assertClienteValido(finalClienteId);
+    data.clienteId = finalClienteId;
+  } else {
+    // Papéis internos não pertencem a um cliente.
+    data.clienteId = null;
+  }
+
+  if (input.novaSenha) data.passwordHash = await hashPassword(input.novaSenha);
+
+  const user = await prisma.user.update({ where: { id: input.id }, data, select: publicSelect });
+
+  // Desativação, troca de senha ou de e-mail invalida as sessões abertas do alvo.
+  if (data.ativo === false || data.passwordHash || data.email) {
+    await prisma.session.deleteMany({ where: { userId: input.id } });
+  }
+
+  return user;
+}
+
+/** Quantos registros "vivos" um usuário é responsável — para decidir a transferência ao excluir. */
+export async function resumoResponsabilidades(id: string) {
+  const [clientes, leads, projetos, tarefas, participacoes] = await Promise.all([
+    prisma.cliente.count({ where: { responsavelId: id, deletedAt: null } }),
+    prisma.lead.count({ where: { responsavelId: id, deletedAt: null } }),
+    prisma.projeto.count({ where: { responsavelId: id, deletedAt: null } }),
+    prisma.card.count({ where: { responsavelId: id } }),
+    prisma.projetoParticipante.count({ where: { userId: id } }),
+  ]);
+  const total = clientes + leads + projetos + tarefas;
+  return { clientes, leads, projetos, tarefas, participacoes, total };
+}
+
+/**
+ * Exclui um usuário (soft delete). Não apaga fisicamente: o histórico
+ * (documentos, tarefas, atividade, mensagens) permanece atribuído a ele.
+ * O e-mail é liberado (tombstone) para poder ser recadastrado.
+ *
+ * As RESPONSABILIDADES (clientes/leads/projetos/tarefas de que ele é responsável)
+ * são transferidas para `transferirParaId`, ou zeradas (sem responsável) se vazio,
+ * para nada ficar apontando para um usuário sem acesso.
+ */
+export async function deleteUsuario(
+  atorId: string,
+  atorRole: Role,
+  id: string,
+  transferirParaId?: string,
+) {
+  if (id === atorId) {
+    throw new TRPCError({ code: "BAD_REQUEST", message: "Você não pode excluir a própria conta." });
+  }
+
+  const alvo = await prisma.user.findUnique({ where: { id } });
+  if (!alvo || alvo.deletedAt) {
+    throw new TRPCError({ code: "NOT_FOUND", message: "Usuário não encontrado." });
+  }
+  // Só se exclui usuário de papel estritamente abaixo do seu (protege pares e ROOT).
+  if (ROLE_LEVEL[alvo.role] >= ROLE_LEVEL[atorRole]) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Sem permissão para excluir este usuário." });
+  }
+
+  // Valida o destino da transferência: membro da equipe ativo (nunca o próprio excluído nem um Cliente).
+  const destinoId = transferirParaId || null;
+  if (destinoId) {
+    if (destinoId === id) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Destino inválido para a transferência." });
+    }
+    const destino = await prisma.user.findFirst({
+      where: { id: destinoId, ativo: true, deletedAt: null, role: { not: "CLIENTE" } },
+      select: { id: true },
+    });
+    if (!destino) {
+      throw new TRPCError({ code: "BAD_REQUEST", message: "Escolha um membro da equipe ativo para receber as responsabilidades." });
+    }
+  }
+
+  const transferencia = await prisma.$transaction(async (tx) => {
+    const [clientes, leads, projetos, tarefas] = await Promise.all([
+      tx.cliente.updateMany({ where: { responsavelId: id }, data: { responsavelId: destinoId } }),
+      tx.lead.updateMany({ where: { responsavelId: id }, data: { responsavelId: destinoId } }),
+      tx.projeto.updateMany({ where: { responsavelId: id }, data: { responsavelId: destinoId } }),
+      tx.card.updateMany({ where: { responsavelId: id }, data: { responsavelId: destinoId } }),
+    ]);
+    // Remove as participações do excluído (evita "membro fantasma" nos projetos).
+    await tx.projetoParticipante.deleteMany({ where: { userId: id } });
+
+    await tx.user.update({
+      where: { id },
+      data: {
+        deletedAt: new Date(),
+        ativo: false,
+        // Libera o e-mail (mantém o @unique) para permitir recadastro futuro.
+        email: `deleted+${Date.now()}+${alvo.email}`.slice(0, 190),
+      },
+    });
+    await tx.session.deleteMany({ where: { userId: id } });
+
+    return {
+      clientes: clientes.count,
+      leads: leads.count,
+      projetos: projetos.count,
+      tarefas: tarefas.count,
+    };
+  });
+
+  return { id, transferido: !!destinoId, ...transferencia };
+}

@@ -1,0 +1,343 @@
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { Check, Circle, Loader2, Package, Pencil, PenLine, Plus, Trash2, X } from "lucide-react";
+import { trpc, type RouterOutputs } from "../../../lib/trpc";
+import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { useConfirm, useConfirmar } from "../../../components/ui/confirm-dialog";
+import { UploadArquivo, ArquivoLink } from "../../../components/ui/upload-arquivo";
+import { Modal } from "../../../components/ui/modal";
+import { Button } from "../../../components/ui/button";
+import { Label } from "../../../components/ui/label";
+import { Select } from "../../../components/ui/select";
+import { MoneyInput } from "../../../components/ui/money-input";
+import { formatPreco } from "../../../lib/masks";
+import { RespostaBriefingDialog } from "./RespostaBriefingDialog";
+
+type ServicoContratado = RouterOutputs["clientes"]["servicos"][number];
+
+/** Edita o que o cliente paga por um serviço contratado: valor + cobrança (+ % no Faturamento). */
+function EditarPrecoDialog({ clienteId, item, onClose }: { clienteId: string; item: ServicoContratado; onClose: () => void }) {
+  const utils = trpc.useUtils();
+  const c = item.contratacao;
+  const ehFaturamento = item.servico.categoria === "Faturamento";
+  const [valor, setValor] = useState<number | undefined>(c?.valor ?? undefined);
+  const [valorRecorrencia, setValorRecorrencia] = useState<"AVULSO" | "MENSAL">(c?.valorRecorrencia ?? "AVULSO");
+  const [percentual, setPercentual] = useState<number | undefined>(c?.percentual ?? undefined);
+  const salvar = trpc.clientes.atualizarContratacao.useMutation({
+    onSuccess: () => (utils.clientes.servicos.invalidate({ id: clienteId }), onClose()),
+  });
+  return (
+    <Modal
+      open
+      onClose={onClose}
+      title={`Preço · ${item.servico.nome}`}
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={salvar.isPending}
+            onClick={() =>
+              salvar.mutate({
+                clienteId,
+                servicoId: item.servico.id,
+                valor: valor ?? null,
+                valorRecorrencia,
+                percentual: ehFaturamento ? percentual ?? null : null,
+              })
+            }
+          >
+            Salvar
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">O que este cliente paga por este serviço. Começa com o valor de referência; ajuste como quiser.</p>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Valor</Label>
+            <MoneyInput value={valor} onChange={setValor} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Cobrança</Label>
+            <Select value={valorRecorrencia} onChange={(e) => setValorRecorrencia(e.target.value as "AVULSO" | "MENSAL")}>
+              <option value="AVULSO">Avulso (1x)</option>
+              <option value="MENSAL">Mensal</option>
+            </Select>
+          </div>
+        </div>
+        {ehFaturamento && (
+          <div className="space-y-1.5">
+            <Label>% do faturamento do cliente (mensal)</Label>
+            <div className="relative">
+              <input
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                placeholder="0"
+                className="h-9 w-full rounded-md border bg-background px-3 pr-7 text-sm outline-none focus:border-primary"
+                value={percentual ?? ""}
+                onChange={(e) => setPercentual(e.target.value === "" ? undefined : Number(e.target.value))}
+              />
+              <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">%</span>
+            </div>
+          </div>
+        )}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Serviços que a MedConsultoria oferece, com os CONTRATADOS ligados para este cliente.
+ * A equipe liga/desliga; por serviço contratado, mostra as exigências (documentos) e o
+ * que já foi enviado, com upload direto na ficha.
+ */
+export function ServicosContratadosCard({ clienteId }: { clienteId: string }) {
+  const utils = trpc.useUtils();
+  const confirm = useConfirm();
+  const confirmar = useConfirmar();
+  const q = trpc.clientes.servicos.useQuery({ id: clienteId });
+  const invalidate = () => utils.clientes.servicos.invalidate({ id: clienteId });
+  const ativar = trpc.clientes.ativarServico.useMutation({ onSuccess: invalidate });
+  const cancelar = trpc.clientes.cancelarServico.useMutation({ onSuccess: invalidate });
+  const removerArquivo = trpc.clientes.removerArquivo.useMutation({ onSuccess: invalidate });
+  const [respostaAberta, setRespostaAberta] = useState<string | null>(null);
+  const [editandoPreco, setEditandoPreco] = useState<ServicoContratado | null>(null);
+
+  const onAtivar = async (servicoId: string, nome: string) => {
+    const { confirmado, marcado } = await confirmar({
+      title: `Contratar "${nome}" para este cliente?`,
+      description: "O serviço passa a constar como contratado na ficha e no Portal do cliente.",
+      confirmText: "Contratar",
+      icon: Package,
+      checkbox: {
+        label: "Avisar o cliente por e-mail",
+        hint: "O cliente recebe um aviso de que o serviço foi ativado e do que precisamos dele.",
+        default: false,
+      },
+    });
+    if (confirmado) ativar.mutate({ clienteId, servicoId, avisarCliente: marcado });
+  };
+  const onCancelar = async (servicoId: string, nome: string) => {
+    const ok = await confirm({
+      title: `Cancelar "${nome}"?`,
+      description: "O serviço deixa de constar como contratado para este cliente.",
+      confirmText: "Cancelar serviço",
+      variant: "destructive",
+    });
+    if (ok) cancelar.mutate({ clienteId, servicoId });
+  };
+  const onRemoverArquivo = async (id: string, nome: string) => {
+    const ok = await confirm({
+      title: "Remover documento?",
+      description: `"${nome}" será removido. Esta ação não pode ser desfeita.`,
+      confirmText: "Remover",
+      variant: "destructive",
+    });
+    if (ok) removerArquivo.mutate({ id });
+  };
+
+  const itens = q.data ?? [];
+  const contratados = itens.filter((s) => s.contratado).length;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Package className="h-4 w-4 text-muted-foreground" /> Serviços contratados
+          {itens.length > 0 && (
+            <span className="ml-1 text-xs font-normal text-muted-foreground">
+              {contratados} de {itens.length}
+            </span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {q.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando serviços…
+          </div>
+        ) : itens.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhum serviço no catálogo. Cadastre em{" "}
+            <Link to="/servicos" className="text-primary hover:underline">
+              Serviços
+            </Link>
+            .
+          </p>
+        ) : (
+          itens.map((item) => (
+            <div
+              key={item.servico.id}
+              className={
+                "rounded-lg border p-3 " + (item.contratado ? "border-primary/30 bg-primary/[0.03]" : "bg-muted/20")
+              }
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-medium text-foreground">{item.servico.nome}</span>
+                {item.contratado ? (
+                  <>
+                    <span className="inline-flex items-center gap-1 rounded bg-success/10 px-1.5 py-0.5 text-[11px] font-semibold text-success">
+                      <Check className="h-3 w-3" /> Contratado
+                    </span>
+                    {formatPreco(item.contratacao ?? {}) && (
+                      <span className="rounded bg-primary/10 px-1.5 py-0.5 text-[11px] font-semibold text-primary">
+                        {formatPreco(item.contratacao ?? {})}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => setEditandoPreco(item)}
+                      title="Editar preço/cobrança"
+                      className="rounded p-0.5 text-muted-foreground/60 transition-colors hover:text-foreground"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </button>
+                    {item.contratacao?.origem === "FUNIL" && (
+                      <span className="text-[11px] text-muted-foreground">(veio do funil)</span>
+                    )}
+                    {item.pendentes > 0 && (
+                      <span className="inline-flex items-center gap-1 rounded bg-warning/10 px-1.5 py-0.5 text-[11px] font-semibold text-warning">
+                        {item.pendentes} doc. pendente{item.pendentes > 1 ? "s" : ""}
+                      </span>
+                    )}
+                    <button
+                      onClick={() => onCancelar(item.servico.id, item.servico.nome)}
+                      className="ml-auto text-xs font-medium text-destructive hover:underline"
+                    >
+                      Cancelar
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => onAtivar(item.servico.id, item.servico.nome)}
+                    className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> Contratar
+                  </button>
+                )}
+              </div>
+
+              {item.contratado && (
+                <div className="mt-3 space-y-2 border-t pt-3">
+                  {item.requisitos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      Nenhuma exigência configurada.{" "}
+                      <Link to="/servicos" className="text-primary hover:underline">
+                        Configurar em Serviços
+                      </Link>
+                    </p>
+                  ) : (
+                    item.requisitos.map((r) => (
+                      <div key={r.id} className="rounded-md border bg-background p-2">
+                        <div className="flex items-start gap-2">
+                          {r.atendido ? (
+                            <Check className="mt-0.5 h-4 w-4 shrink-0 text-success" />
+                          ) : (
+                            <Circle className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/50" />
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="text-sm font-medium text-foreground">{r.titulo}</span>
+                              {r.obrigatorio && (
+                                <span className="rounded bg-muted px-1 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground">
+                                  Obrigatório
+                                </span>
+                              )}
+                              {r.tipo === "INFORMACAO" && (
+                                <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] font-semibold text-primary">
+                                  Informação
+                                </span>
+                              )}
+                              {r.tipo === "BRIEFING" && (
+                                <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] font-semibold text-primary">
+                                  Formulário
+                                </span>
+                              )}
+                            </div>
+                            {r.descricao && <p className="text-xs text-muted-foreground">{r.descricao}</p>}
+                            {r.arquivos.length > 0 && (
+                              <ul className="mt-1 space-y-0.5">
+                                {r.arquivos.map((a) => (
+                                  <li key={a.id} className="flex items-center gap-1.5 text-xs">
+                                    <ArquivoLink id={a.id} nome={a.nome} className="max-w-[220px]" />
+                                    <span className="text-muted-foreground">
+                                      · {a.enviadoPorTipo === "CLIENTE" ? "cliente" : "equipe"}
+                                    </span>
+                                    <button
+                                      onClick={() => onRemoverArquivo(a.id, a.nome)}
+                                      title="Remover"
+                                      className="text-muted-foreground/60 hover:text-destructive"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                            {r.tipo === "DOCUMENTO" ? (
+                              <div className="mt-1.5">
+                                <UploadArquivo
+                                  size="xs"
+                                  label={r.atendido ? "Enviar outro" : "Anexar"}
+                                  campos={{ clienteId, servicoId: item.servico.id, requisitoId: r.id }}
+                                  onDone={invalidate}
+                                />
+                              </div>
+                            ) : r.respostaId ? (
+                              <button
+                                onClick={() => setRespostaAberta(r.respostaId!)}
+                                className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                              >
+                                <PenLine className="h-3.5 w-3.5" />
+                                {r.respostaStatus === "ENVIADO" ? "Ver respostas" : "Ver rascunho do cliente"}
+                              </button>
+                            ) : (
+                              <p className="mt-1 text-xs text-muted-foreground">Aguardando o cliente preencher.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
+
+                  {/* Documentos avulsos deste serviço */}
+                  {item.arquivosAvulsos.length > 0 && (
+                    <ul className="space-y-0.5 pt-1">
+                      {item.arquivosAvulsos.map((a) => (
+                        <li key={a.id} className="flex items-center gap-1.5 text-xs">
+                          <ArquivoLink id={a.id} nome={a.nome} className="max-w-[220px]" />
+                          <span className="text-muted-foreground">
+                            · {a.enviadoPorTipo === "CLIENTE" ? "cliente" : "equipe"}
+                          </span>
+                          <button
+                            onClick={() => onRemoverArquivo(a.id, a.nome)}
+                            title="Remover"
+                            className="text-muted-foreground/60 hover:text-destructive"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <UploadArquivo
+                    size="xs"
+                    label="Anexar outro documento"
+                    campos={{ clienteId, servicoId: item.servico.id }}
+                    onDone={invalidate}
+                  />
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </CardContent>
+      {respostaAberta && <RespostaBriefingDialog respostaId={respostaAberta} onClose={() => setRespostaAberta(null)} />}
+      {editandoPreco && <EditarPrecoDialog clienteId={clienteId} item={editandoPreco} onClose={() => setEditandoPreco(null)} />}
+    </Card>
+  );
+}

@@ -1,0 +1,91 @@
+import { FileUp, Paperclip, Trash2, User, Users } from "lucide-react";
+import { trpc } from "../../../lib/trpc";
+import { Card, CardHeader, CardTitle, CardContent } from "../../../components/ui/card";
+import { useConfirm } from "../../../components/ui/confirm-dialog";
+import { UploadArquivo, ArquivoLink } from "../../../components/ui/upload-arquivo";
+import { data } from "../../../lib/format-date";
+
+/**
+ * Documentos DO CLIENTE (arquivos): os que o próprio cliente enviou pelo Portal e os que
+ * a equipe anexou manualmente. Diferente de "Documentos da MedConsultoria" (propostas,
+ * contratos, atas — o modelo Documento).
+ */
+export function DocumentosClienteCard({ clienteId }: { clienteId: string }) {
+  const utils = trpc.useUtils();
+  const confirm = useConfirm();
+  const q = trpc.clientes.arquivos.useQuery({ id: clienteId });
+  const invalidate = () => {
+    utils.clientes.arquivos.invalidate({ id: clienteId });
+    utils.clientes.servicos.invalidate({ id: clienteId });
+  };
+  const remover = trpc.clientes.removerArquivo.useMutation({ onSuccess: invalidate });
+
+  const arquivos = q.data ?? [];
+
+  const onRemover = async (id: string, nome: string) => {
+    if (
+      await confirm({
+        title: "Remover documento?",
+        description: `"${nome}" será removido. Esta ação não pode ser desfeita.`,
+        confirmText: "Remover",
+        variant: "destructive",
+      })
+    )
+      remover.mutate({ id });
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>
+          <Paperclip className="h-4 w-4 text-muted-foreground" /> Documentos do cliente
+        </CardTitle>
+        <span className="text-xs text-muted-foreground">Enviados pelo cliente ou anexados por você</span>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <UploadArquivo label="Anexar documento" campos={{ clienteId }} onDone={invalidate} />
+
+        {arquivos.length === 0 ? (
+          <p className="rounded-md border border-dashed px-4 py-6 text-center text-sm text-muted-foreground">
+            Nenhum documento do cliente ainda. O cliente pode enviar pelo Portal, ou você anexa aqui.
+          </p>
+        ) : (
+          <div className="space-y-1.5">
+            {arquivos.map((a) => {
+              const contexto = a.requisito?.titulo ?? a.servico?.nome ?? "Geral";
+              const doCliente = a.enviadoPorTipo === "CLIENTE";
+              return (
+                <div key={a.id} className="flex items-center gap-2.5 rounded-md border px-3 py-2 text-sm">
+                  <FileUp className="h-4 w-4 shrink-0 text-primary" />
+                  <div className="min-w-0 flex-1">
+                    <ArquivoLink id={a.id} nome={a.nome} className="block max-w-full font-medium" />
+                    <div className="truncate text-xs text-muted-foreground">
+                      {contexto} · {data(a.createdAt)}
+                    </div>
+                  </div>
+                  <span
+                    className={
+                      "inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-semibold " +
+                      (doCliente ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground")
+                    }
+                    title={doCliente ? "Enviado pelo cliente no Portal" : "Anexado pela equipe"}
+                  >
+                    {doCliente ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
+                    {doCliente ? "Cliente" : "Equipe"}
+                  </span>
+                  <button
+                    onClick={() => onRemover(a.id, a.nome)}
+                    title="Remover"
+                    className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

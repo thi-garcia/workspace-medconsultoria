@@ -1,0 +1,171 @@
+# 🔑 ACESSOS E LINKS — Workspace MedConsultoria (ambiente local)
+
+> Guia rápido para acompanhar a aplicação **rodando na sua máquina**.
+> Este é o ambiente de desenvolvimento (local). O de produção (workspace.medconsultoria.com.br) fica para depois.
+
+---
+
+## ▶️ A aplicação está rodando?
+
+Se você acabou de pedir para eu rodar, ela **já está no ar**. Abra no navegador:
+
+### 👉 **http://localhost:4310**
+
+Se não abrir (ex.: você reiniciou o computador), veja "Como ligar" no final.
+
+---
+
+## 🔐 Logins de teste (senha `medconsultoria123` em todos)
+
+| E-mail                                 | Papel        | O que vê                                                                    |
+| -------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
+| `root@medconsultoria.com.br`         | ROOT         | Tudo. Único que pode criar/gerenciar**administradores**               |
+| `thais.garcia@medconsultoria.com.br` | ADMIN        | Tudo (inclusive Financeiro e Usuários)                                      |
+| `func@medconsultoria.com.br`         | FUNCIONÁRIO | Tudo,**exceto** Financeiro e Usuários                                 |
+| `cliente@medconsultoria.com.br`      | CLIENTE      | **Portal do Cliente** — só os dados do próprio cliente (Acme Saude) |
+
+> Senhas só de teste local. Em produção, senhas reais e fortes.
+> **Novidade:** dá para trocar a própria senha e editar o perfil em **Configurações** (menu do usuário, no rodapé da barra lateral).
+
+---
+
+## 🔗 Links da área interna (equipe) — abrem dentro de http://localhost:4310
+
+| Tela                            | Link                                | O que é                                                                                                                                                                 |
+| ------------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 🏠**Dashboard**           | http://localhost:4310/              | "O que precisa da sua atenção hoje": **ações rápidas** no topo, **✨ Seu dia com a IA** (plano priorizado do que fazer hoje), central de atenção, leads no funil, reuniões, tarefas, financeiro (admin), **clientes querendo mais (upsell)** — tudo clicável e por papel   |
+| 🎯**Funil de vendas**     | http://localhost:4310/leads         | Kanban de leads —**arraste os cartões** entre as etapas; botão **Converter** transforma um lead em cliente                                                |
+| 👥**Clientes**            | http://localhost:4310/clientes      | Só seus **clientes** (Ativos/Inativos). KPIs, filtros Todos/Ativos/Inativos, selo **"No funil"** (quer mais), e o botão **"Enviar acesso"** (manda o convite do Portal, igual ao Funil). Na ficha: **Ativar/Desativar**, **Enviar acesso ao Portal** (ou "Portal ativo") + card **"Negócios & serviços"** (serviços contratados, valor, cliente desde, o que quer agora) |
+| 📄**Ficha do cliente**    | (clique num cliente)                | Hub do cliente: contatos, anotações, **origem comercial**, projetos, documentos, reuniões, financeiro (admin), e-mails e **suporte**. Dá para **Ativar/Desativar** o cliente (com confirmação); o botão **"Nova oportunidade"** abre um novo negócio no funil (escolhendo os **serviços** — o card e as tarefas já nascem prontos) sem transformar o cliente em lead. Toda exclusão pede confirmação |
+| 🧰**Serviços**            | http://localhost:4310/servicos      | **Admin**: catálogo de serviços da Med e os **passos de cada etapa** que entram no checklist do lead                                                                    |
+| 📁**Projetos**            | http://localhost:4310/projetos      | Projetos por cliente; clique para abrir o kanban                                                                                                                         |
+| 🗂️**Kanban do projeto** | (clique num projeto)                | Colunas **A fazer → Em andamento → Aguardando cliente / Aguardando terceiros → Concluído**. **Arraste o cartão por qualquer lugar** dele; **clique** no cartão para abrir (checklist, **cronômetro**, comentários). Concluir todos os cartões **conclui o projeto sozinho**; contratar um serviço **já cria o cartão** no projeto |
+| 📅**Agenda**              | http://localhost:4310/agenda        | Semana com compromissos/retornos/reuniões;**Novo evento**, link "Entrar" nas reuniões; **🔔 sino** no topo avisa lembretes em tempo real                   |
+| 💬**Mensagens**           | http://localhost:4310/mensagens     | Chat interno em tempo real: conversas individuais e grupos, não-lidas. Botão**+** para nova conversa                                                                   |
+| 📄**Documentos**          | http://localhost:4310/documentos    | Gera proposta/ata/briefing a partir de modelos com`{{variáveis}}` **ou com IA (✨)**; fluxo rascunho→revisão→**aprovação**→enviado; export PDF/Word |
+| 💰**Financeiro**          | http://localhost:4310/financeiro    | Contas a pagar/receber, resumo,**alerta de vencidas**, marcar paga, **gerenciar categorias**. **Só administradores**                                  |
+| ⚙️**Configurações**   | http://localhost:4310/configuracoes | Editar seu**perfil** e **trocar a senha** (abre pelo menu do usuário)                                                                                       |
+| 👤**Usuários & acessos** | http://localhost:4310/usuarios      | **Admin**: cadastrar equipe interna **e criar acessos ao Portal do Cliente**                                                                                 |
+| ✉️**Comunicações**      | http://localhost:4310/emails        | **Admin**: editar os **textos dos e-mails** que o sistema envia (boas-vindas, avisos, etc.)                                                                     |
+| 📤**E-mails enviados**   | http://localhost:4310/emails-enviados | **Admin/ROOT**: **monitor** de tudo que o sistema enviou — quantos foram, **quantos falharam e por quê**, com filtros (enviados/só falhas/tipo/período/busca)     |
+| 🩺**Sistema**            | http://localhost:4310/sistema       | **Só ROOT**: saúde do sistema, desempenho, erros, incidentes e sessões ativas                                                                                    |
+
+---
+
+> **Briefings online (novo).** Além de anexar arquivos, o cliente pode **preencher formulários direto na tela** (ex.: Briefing de site, de logo, de redes sociais) — no Portal, é só clicar em **"Preencher na tela"**; ele também pode **Baixar** se preferir. A equipe vê as respostas na ficha. Você cria e edita esses formulários em **Documentos → aba Formulários** — sem programar — e liga cada um a um serviço na aba **Exigências** (em Serviços).
+
+> **✨ IA por toda a parte (a IA sugere, você aprova).** Onde tiver a estrelinha ✨: em **Serviços** (Exigências) → "Sugerir com IA" monta o checklist de documentos; em **Documentos → Formulários** → "Sugerir perguntas" cria o briefing; na **ficha do cliente** → "Resumir com IA" dá um resumo + próximos passos; no **funil** (abrindo um lead) → "Próximo passo" e "Escrever e-mail". Também: gerar/melhorar documentos, a apresentação da proposta e a busca inteligente (Ctrl+K). Nada é enviado sozinho — a IA sempre entrega um rascunho para você conferir.
+
+> **Serviços contratados e documentos (novo).** Na **ficha do cliente**, o card **"Serviços contratados"** mostra tudo que a Med oferece — clique em **Contratar** para ligar um serviço (ou **Cancelar** para desligar). Cada serviço tem uma **lista de documentos** que o cliente precisa enviar (ex.: credenciamento → docs dos médicos); a equipe e o cliente podem **anexar arquivos** ali. No **Portal do Cliente**, o card **"Seus serviços"** mostra o que falta ele enviar — ele anexa direto por lá, e você **recebe um aviso** (notificação + e-mail) na hora. Os documentos que cada serviço pede são configurados em **Serviços** (ícone de prancheta) — já vêm com exemplos prontos para a Thaís ajustar. *(Em breve: briefings que o cliente responde online, sem baixar nada.)*
+
+> **Você decide quando o cliente recebe e-mail.** Ao **cadastrar um cliente**, **converter um lead**, **solicitar assinatura** ou **agendar um evento com um cliente**, aparece um pop-up de confirmação com uma **caixinha "enviar e-mail?"** — marque para avisar o cliente (acesso ao Portal, boas-vindas, link de assinatura, aviso da reunião) ou desmarque para não enviar. Nada de e-mail automático sem você querer. (A **captação pública** e o botão **"Enviar acesso"** enviam direto, porque enviar é o próprio objetivo.) Se converter um lead **sem serviço marcado**, o pop-up avisa — e a ficha de um cliente sem serviço mostra um lembrete para registrar o que ele contratou.
+
+---
+
+## 🌐 Links públicos (abrem sem login)
+
+| Link                                        | O que é                                                                                                                          |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| **http://localhost:4310/captura**     | **Formulário de captação** para pôr no site — quem preenche vira um lead no funil (com a **origem detectada** automaticamente) e já ganha acesso ao Portal para acompanhar |
+| `http://localhost:4310/assinar/...`       | Página de **assinatura eletrônica** de um documento (o link vai por e-mail para o cliente assinar proposta/contrato)             |
+
+> No **Funil de vendas**, o botão **"Link de captação"** copia o endereço do formulário público. Cadastro **manual** de lead também registra "de onde veio". O botão **"Perdidos"** mostra os leads que não avançaram (com o motivo) e permite **reabrir**.
+
+---
+
+## 🔎 Busca inteligente (Ctrl + K) — com IA
+
+No topo de qualquer tela há uma **busca global**. Aperte **Ctrl + K** (ou clique nela) e:
+
+- **Busque de verdade** por clientes, leads, projetos e documentos — os resultados aparecem agrupados e levam direto ao registro (não é mais só o menu).
+- **Pergunte à IA** ✨ — digite uma dúvida em linguagem natural (ex.: *"Como faço para lançar uma conta a pagar?"*) e a assistente responde ali mesmo. A IA guia o uso do sistema; ela **nunca** executa ações sozinha, e toda resposta traz o aviso de conferir antes de agir.
+
+> A IA só aparece quando a chave do provedor (`OPENAI_API_KEY`) está configurada no `.env`. Sem ela, a busca por dados continua funcionando normalmente.
+
+**Autocomplete:** os campos de **cliente** nos formulários (projeto, conta, evento, documento, acesso de Portal) agora têm **busca com sugestão** — comece a digitar e escolha na lista, em vez de rolar um seletor grande.
+
+---
+
+## 🧑‍💼 Portal do Cliente (área do cliente)
+
+O cliente entra pelo **mesmo endereço** (http://localhost:4310) com um login de papel **CLIENTE** e cai num ambiente **separado e isolado** — ele nunca vê o menu interno nem dados de outros clientes.
+
+- **Como testar:** saia da sua conta e entre com `cliente@medconsultoria.com.br` / `medconsultoria123`.
+- **O que o cliente vê:** o **andamento do atendimento** (a etapa do funil em linguagem amigável), **documentos para assinar**, projetos, documentos, **e-mails recebidos**, próximas reuniões e um **chat de Suporte** com a equipe — tudo vinculado **apenas ao cadastro dele** (Acme Saude).
+- **Prospect (ainda não é cliente):** quem chega pela captação também ganha acesso e acompanha o próprio atendimento pelo Portal desde o primeiro contato.
+- **Liberdade do cliente:** no card "Seu atendimento" há um link discreto **"Não tenho mais interesse"** — se o cliente desistir, o lead vai automaticamente para **Perdidos** na aplicação (e a equipe é avisada). Se mudar de ideia, aparece um botão **"Quero retomar"** que o traz de volta ao funil.
+- **Autosserviço ("O que você precisa?"):** o cliente escolhe no Portal os **serviços** que precisa e clica em **Solicitar** → automaticamente vira uma **oportunidade no Funil de vendas** (com esses serviços e o checklist certo) e a **equipe é avisada** (notificação + e-mail). O que ele já pediu aparece marcado.
+- **Como criar um acesso de Portal para um cliente real:** em **Usuários & acessos** (admin) → **Novo usuário** → papel **Cliente** → escolha o cliente. Pronto: aquele cliente ganha login no Portal, restrito aos dados dele.
+
+---
+
+## 🧭 Roteiro para você experimentar (3 minutos)
+
+1. Abra **http://localhost:4310** e faça login como Thaís.
+2. Aperte **Ctrl + K**, digite **"Acme"** e veja os resultados reais; depois experimente **"Perguntar à IA"** com uma dúvida.
+3. Clique em **Funil de vendas** e **arraste** um cartão entre colunas.
+4. Clique em **Converter** num lead → ele vira cliente e abre a ficha.
+5. Em **Projetos** → **Novo projeto** → note o campo **Cliente** com autocomplete.
+6. Abra **Configurações** (rodapé da barra lateral, no seu nome) e veja perfil/senha.
+7. Em **Usuários & acessos**, crie um acesso de **Portal** para um cliente e depois entre com ele para ver a área do cliente.
+
+> Os dados de exemplo (clientes, leads, projetos, documentos) existem só para as telas não ficarem vazias. Pode editar/apagar à vontade — é ambiente de teste.
+
+---
+
+## ⚙️ Como ligar / desligar (para você ou um dev)
+
+No terminal, dentro da pasta do projeto:
+
+```bash
+# 1) Ligar o banco de dados (uma vez)
+pnpm db:up
+
+# 2) Ligar a aplicação (API + site juntos)
+pnpm dev
+```
+
+Depois é só abrir **http://localhost:4310**.
+
+**Comandos úteis:**
+
+| Comando                           | O que faz                                 |
+| --------------------------------- | ----------------------------------------- |
+| `pnpm dev`                      | Liga API (porta 4319) + site (porta 4310) |
+| `pnpm db:up` / `pnpm db:down` | Liga / desliga o banco (Docker)           |
+| `pnpm db:demo`                  | Recria os dados de exemplo                |
+| `pnpm db:seed`                  | Recria o usuário ROOT                    |
+
+**Para desligar a aplicação:** aperte `Ctrl + C` no terminal onde o `pnpm dev` está rodando.
+
+---
+
+## 🤖 Ligar a IA (opcional)
+
+A busca com IA e a geração de documentos com IA usam a **OpenAI**. Para ativar:
+
+1. Pegue uma chave em https://platform.openai.com (começa com `sk-...`).
+2. No arquivo `.env` (raiz do projeto), preencha: `OPENAI_API_KEY="sk-..."`.
+3. Reinicie a aplicação (`Ctrl + C` e `pnpm dev` de novo).
+
+Sem chave, o app funciona normalmente — só as funções de IA ficam ocultas.
+
+---
+
+## 🔌 Portas usadas (escolhidas para não conflitar com seus outros projetos)
+
+| Serviço                | Porta          |
+| ----------------------- | -------------- |
+| Site (o que você abre) | **4310** |
+| API (bastidores)        | **4319** |
+| Banco MySQL (Docker)    | **3307** |
+
+Verificação técnica da API (opcional): http://localhost:4319/health deve responder `{"status":"ok"}`.
+
+---
+
+## 📌 Importante
+
+- Isto roda **na sua máquina** — só você acessa. Ninguém de fora vê.
+- Publicar no endereço real (workspace.medconsultoria.com.br) é uma etapa separada, que faremos quando você tiver os dados da hospedagem (TineHost).
+- Este documento vale para o ambiente local; quando publicarmos, crio um equivalente com os acessos de produção.

@@ -1,0 +1,169 @@
+import { useState } from "react";
+import { FileSignature, CheckCircle2, ShieldCheck, AlertTriangle, Loader2, Circle } from "lucide-react";
+import { trpc } from "../../lib/trpc";
+import { dataHora } from "../../lib/format-date";
+import { Button } from "../../components/ui/button";
+import { SignaturePad, type AssinaturaValor } from "./SignaturePad";
+
+function Casca({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <header className="border-b bg-background">
+        <div className="mx-auto flex max-w-2xl items-center gap-2 px-4 py-3">
+          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-primary to-brand-blueLight text-xs font-bold text-white">
+            M
+          </span>
+          <span className="font-semibold">MedConsultoria</span>
+        </div>
+      </header>
+      <main className="mx-auto max-w-2xl px-4 py-6">{children}</main>
+    </div>
+  );
+}
+
+export function AssinarPage({ token }: { token: string }) {
+  const utils = trpc.useUtils();
+  const q = trpc.assinaturas.porToken.useQuery({ token });
+  const assinar = trpc.assinaturas.assinar.useMutation({ onSuccess: () => utils.assinaturas.porToken.invalidate() });
+  const [valor, setValor] = useState<AssinaturaValor>({ metodo: "DESENHO" });
+  const [consentiu, setConsentiu] = useState(false);
+
+  if (q.isLoading) {
+    return (
+      <Casca>
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      </Casca>
+    );
+  }
+  if (q.isError || !q.data) {
+    return (
+      <Casca>
+        <div className="rounded-xl border bg-background p-8 text-center">
+          <AlertTriangle className="mx-auto mb-3 h-8 w-8 text-warning" />
+          <h1 className="text-lg font-semibold">Link inválido</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Este link de assinatura não é válido ou expirou. Peça um novo à MedConsultoria.
+          </p>
+        </div>
+      </Casca>
+    );
+  }
+
+  const d = q.data;
+  const assinado = d.status === "ASSINADO" || assinar.data?.ok;
+  const preenchido = valor.metodo === "DESENHO" ? !!valor.imagem : !!valor.nomeDigitado?.trim();
+
+  const listaSignatarios = (
+    <div className="rounded-xl border bg-background p-4">
+      <h2 className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Signatários</h2>
+      <div className="space-y-1.5">
+        {d.todas.map((s, i) => (
+          <div key={i} className="flex items-center gap-2 text-sm">
+            {s.status === "ASSINADO" ? (
+              <CheckCircle2 className="h-4 w-4 text-success" />
+            ) : (
+              <Circle className="h-4 w-4 text-muted-foreground/50" />
+            )}
+            <span className="font-medium">{s.nome}</span>
+            <span className="text-xs text-muted-foreground">({s.papel === "CLIENTE" ? "Cliente" : "MedConsultoria"})</span>
+            <span className="ml-auto text-xs text-muted-foreground">
+              {s.status === "ASSINADO" && s.assinadoEm ? dataHora(s.assinadoEm) : "pendente"}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (assinado) {
+    return (
+      <Casca>
+        <div className="space-y-4">
+          <div className="rounded-xl border bg-background p-8 text-center">
+            <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-success" />
+            <h1 className="text-xl font-semibold">Assinatura registrada!</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Obrigado, {d.signatario.nome}. Sua assinatura de <strong>“{d.documento.titulo}”</strong> foi registrada com
+              data, hora e código de integridade.
+            </p>
+          </div>
+          {listaSignatarios}
+        </div>
+      </Casca>
+    );
+  }
+
+  return (
+    <Casca>
+      <div className="space-y-4">
+        <div className="flex items-start gap-3">
+          <FileSignature className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+          <div>
+            <h1 className="text-xl font-semibold leading-tight">{d.documento.titulo}</h1>
+            <p className="text-sm text-muted-foreground">{d.signatario.nome}, revise o documento abaixo e assine.</p>
+          </div>
+        </div>
+
+        {d.conteudoAlterado ? (
+          <div className="flex items-start gap-2 rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-warning">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>Este documento foi alterado após o envio. Por segurança, peça um novo link de assinatura à MedConsultoria.</span>
+          </div>
+        ) : (
+          <>
+            <div className="max-h-[45vh] overflow-y-auto whitespace-pre-wrap rounded-xl border bg-background p-5 text-sm leading-relaxed">
+              {d.documento.conteudo}
+            </div>
+
+            {listaSignatarios}
+
+            <div className="rounded-xl border bg-background p-4">
+              <h2 className="mb-2 text-sm font-semibold">Sua assinatura</h2>
+              <SignaturePad onChange={setValor} />
+
+              <label className="mt-3 flex cursor-pointer items-start gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={consentiu}
+                  onChange={(e) => setConsentiu(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 accent-[var(--primary)]"
+                />
+                <span className="text-muted-foreground">
+                  Li o documento e concordo em assiná-lo eletronicamente. Entendo que esta assinatura tem validade
+                  jurídica (Lei 14.063/2020).
+                </span>
+              </label>
+
+              {assinar.error && <p className="mt-2 text-sm text-destructive">{assinar.error.message}</p>}
+
+              <Button
+                size="lg"
+                className="mt-3 w-full"
+                disabled={!consentiu || !preenchido || assinar.isPending}
+                onClick={() =>
+                  assinar.mutate({
+                    token,
+                    metodo: valor.metodo,
+                    imagem: valor.imagem,
+                    nomeDigitado: valor.nomeDigitado,
+                    consentimento: true,
+                  })
+                }
+              >
+                {assinar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSignature className="h-4 w-4" />}
+                Assinar documento
+              </Button>
+            </div>
+          </>
+        )}
+
+        <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
+          <ShieldCheck className="h-3.5 w-3.5" />
+          Assinatura eletrônica com trilha de auditoria (data, hora, IP e código de integridade).
+        </p>
+      </div>
+    </Casca>
+  );
+}

@@ -1,0 +1,1133 @@
+// Schema do Workspace MedConsultoria — MySQL.
+// Convenções (ver docs/DATABASE.md): PK cuid, createdAt/updatedAt, soft delete onde faz sentido.
+// Fase 0 cria apenas Identidade & Acesso. As demais entidades entram fase a fase.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+/// Papéis do sistema (RBAC). Espelha ROLES em packages/shared.
+enum Role {
+  ROOT
+  ADMIN
+  FUNCIONARIO
+  CLIENTE
+}
+
+/// Usuário interno ou cliente do Portal.
+model User {
+  id           String    @id @default(cuid())
+  nome         String
+  email        String    @unique
+  // Nulo enquanto o convite não foi aceito (usuário "pendente", sem senha definida).
+  passwordHash String?
+  role         Role      @default(FUNCIONARIO)
+  ativo        Boolean   @default(true)
+  avatarUrl    String?
+  // Se role = CLIENTE, define o escopo do Portal (FK adicionada quando o módulo Cliente existir).
+  clienteId    String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  deletedAt    DateTime?
+
+  sessions            Session[]
+  activityLogs        ActivityLog[]
+  cliente             Cliente?    @relation("UserCliente", fields: [clienteId], references: [id], onDelete: SetNull)
+  clientesResponsavel Cliente[]   @relation("ClienteResponsavel")
+  leadsResponsavel    Lead[]      @relation("LeadResponsavel")
+  projetosResponsavel Projeto[]     @relation("ProjetoResponsavel")
+  projetosParticipa   ProjetoParticipante[]
+  cardsResponsavel    Card[]        @relation("CardResponsavel")
+  timeEntries         TimeEntry[]
+  notas               Nota[]
+  eventos             Evento[]                @relation("EventoDono")
+  eventoParticipacoes EventoParticipante[]
+  notificacoes        Notificacao[]
+  mensagens           Mensagem[]
+  conversaParticipa   ConversaParticipante[]
+  conversasResponsavel Conversa[]            @relation("ConversaResponsavel")
+  conversasCriadas    Conversa[]             @relation("ConversaCriador")
+  documentosCriados   Documento[]             @relation("DocCriador")
+  documentosAprovados Documento[]             @relation("DocAprovador")
+  documentoVersoes    DocumentoVersao[]
+  suporteMensagens    SuporteMensagem[]
+  tokens              Token[]
+  preferenciasEmail   PreferenciaEmail[]
+  contas              Conta[]                @relation("ContaDono")
+  categorias          Categoria[]            @relation("CategoriaDono")
+
+  @@index([role])
+  @@index([clienteId])
+}
+
+/// Personalização (override) do conteúdo de um e-mail transacional. Ausência = usa o padrão do código.
+model EmailTemplate {
+  chave         String   @id
+  assunto       String
+  titulo        String
+  corpo         String   @db.Text // parágrafos separados por linha em branco; aceita {{variaveis}}
+  ctaTexto      String?
+  nota          String?  @db.Text
+  atualizadoPor String?
+  atualizadoEm  DateTime @updatedAt
+}
+
+/// Preferência de recebimento de e-mail por categoria. Ausência de linha = habilitado (opt-out).
+model PreferenciaEmail {
+  id     String  @id @default(cuid())
+  userId String
+  tipo   String
+  ativo  Boolean @default(true)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tipo])
+  @@index([userId])
+}
+
+/// Token de uso único (convite de acesso / redefinição de senha). Guarda só o HASH.
+model Token {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  tipo      String // "CONVITE" | "RESET"
+  userId    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+/// Sessão persistida (permite revogação). Referenciada pelo cookie httpOnly.
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  userAgent String?  @db.Text
+  ip        String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+/// Log de auditoria genérico — alimenta timelines e rastreio LGPD.
+model ActivityLog {
+  id           String   @id @default(cuid())
+  userId       String?
+  acao         String
+  entidadeTipo String?
+  entidadeId   String?
+  dados        Json?
+  createdAt    DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([entidadeTipo, entidadeId])
+  @@index([createdAt])
+}
+
+/// Erros do servidor agrupados por fingerprint (estilo "issue" do Sentry) — capturado
+/// automaticamente para o painel do ROOT. Ocorrências idênticas somam no mesmo registro.
+model ErrorLog {
+  id          String    @id @default(cuid())
+  fingerprint String    @unique
+  rota        String?
+  mensagem    String    @db.Text
+  stack       String?   @db.Text
+  userId      String?
+  ocorrencias Int       @default(1)
+  resolvido   Boolean   @default(false)
+  resolvidoEm DateTime?
+  regrediu    Boolean   @default(false)
+  ignorado    Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  ultimaVez   DateTime  @default(now())
+
+  @@index([resolvido, ultimaVez])
+}
+
+/// Incidente aberto automaticamente pelo motor de alertas quando um sinal cruza o
+/// limiar (com histerese/período de espera). Guarda histórico + MTTR para o painel.
+model Incidente {
+  id            String    @id @default(cuid())
+  regra         String
+  titulo        String
+  severidade    String // "degradado" | "critico"
+  componente    String
+  detalhe       String    @db.Text
+  status        String    @default("ABERTO") // ABERTO | RECONHECIDO | RESOLVIDO
+  valorPico     Float?
+  createdAt     DateTime  @default(now())
+  reconhecidoEm DateTime?
+  resolvidoEm   DateTime?
+
+  @@index([status, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// CRM (Fase 1)
+// ─────────────────────────────────────────────────────────────
+
+enum ClienteTipo {
+  PF
+  PJ
+}
+
+/// Cliente da MedConsultoria — espinha dorsal do sistema.
+model Cliente {
+  id            String      @id @default(cuid())
+  nome          String
+  tipo          ClienteTipo @default(PJ)
+  documento     String? // CPF ou CNPJ
+  email         String?
+  telefone      String?
+  observacoes   String?     @db.Text
+  // Estágio na relação comercial: PROSPECT | NEGOCIACAO | ATIVO | PERDIDO (usado a partir da Fase 3).
+  situacaoComercial String  @default("ATIVO")
+  responsavelId String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  deletedAt     DateTime?
+
+  responsavel      User?     @relation("ClienteResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  contatos         Contato[]
+  usuariosPortal   User[]    @relation("UserCliente")
+  leadsConvertidos Lead[]    @relation("LeadConvertido")
+  leadsPortal      Lead[]    @relation("LeadClientePortal")
+  projetos         Projeto[]
+  eventos          Evento[]
+  contas           Conta[]
+  documentos       Documento[]
+  suporteMensagens SuporteMensagem[]
+  conversas        Conversa[]
+  servicosContratados ClienteServico[]
+  arquivos         Arquivo[]
+  respostasFormulario FormularioResposta[]
+
+  @@index([responsavelId])
+  @@index([deletedAt])
+}
+
+/// Mensagem do canal de SUPORTE de um cliente (Portal ↔ equipe). Isolado por clienteId.
+model SuporteMensagem {
+  id        String   @id @default(cuid())
+  clienteId String
+  autorId   String
+  corpo     String   @db.Text
+  daEquipe  Boolean // true = enviada pela equipe; false = pelo cliente (Portal)
+  lida      Boolean  @default(false) // lida pela outra parte
+  createdAt DateTime @default(now())
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  autor   User    @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId, createdAt])
+}
+
+/// Pessoa de contato dentro de um Cliente (especialmente PJ).
+model Contato {
+  id        String   @id @default(cuid())
+  clienteId String
+  nome      String
+  cargo     String?
+  email     String?
+  telefone  String?
+  principal Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+}
+
+/// Anotação polimórfica (entidadeTipo + entidadeId). Ex.: ("cliente", <id>).
+/// Junto com o ActivityLog forma a timeline da entidade.
+model Nota {
+  id           String   @id @default(cuid())
+  autorId      String?
+  entidadeTipo String
+  entidadeId   String
+  conteudo     String   @db.Text
+  createdAt    DateTime @default(now())
+
+  autor User? @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([entidadeTipo, entidadeId])
+  @@index([autorId])
+}
+
+/// Coluna do funil de vendas (kanban de Leads). Ordenável.
+model PipelineStage {
+  id        String   @id @default(cuid())
+  nome      String
+  ordem     Int
+  cor       String?
+  // Chave semântica estável para a automação (ex.: "qualificacao", "proposta").
+  // Sobrevive a renomear/reordenar; etapas personalizadas ficam sem chave (null).
+  chaveAuto String?
+  createdAt DateTime @default(now())
+
+  leads Lead[]
+
+  @@index([ordem])
+}
+
+/// Catálogo de origens de lead (editável). De onde o lead veio — alimenta o
+/// autocomplete do campo "Origem" e padroniza os valores.
+model Origem {
+  id        String   @id @default(cuid())
+  nome      String
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([ordem])
+}
+
+/// Catálogo de operadoras/convênios para a Proposta de credenciamento (editável: a equipe
+/// renomeia e exclui permanentemente). Semeado com as operadoras comuns na primeira leitura.
+model Operadora {
+  id        String   @id @default(cuid())
+  nome      String
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([ordem])
+}
+
+/// Catálogo de serviços da MedConsultoria (editável). O lead marca no cadastro o
+/// que precisa; guia proposta/briefing/contrato e, ao fechar, vira tarefas do projeto.
+/// Como um valor de serviço é cobrado: uma única vez (avulso) ou todo mês (recorrente).
+enum PrecoRecorrencia {
+  AVULSO
+  MENSAL
+}
+
+model Servico {
+  id        String   @id @default(cuid())
+  nome      String
+  descricao String?  @db.Text
+  categoria String? // agrupa o catálogo: Gestão | Faturamento | Networking | Desenvolvimento | Marketing
+  // Precificação flexível: um serviço pode ter valor fixo e/ou % do faturamento do cliente,
+  // e cada componente pode ser avulso (1x) ou mensal (recorrente). Ambos opcionais.
+  valor                 Float? // valor fixo de referência (opcional)
+  valorRecorrencia      PrecoRecorrencia @default(AVULSO)
+  percentual            Float? // % sobre o faturamento do cliente, ex.: 5 = 5% (opcional)
+  percentualRecorrencia PrecoRecorrencia @default(MENSAL)
+  // Roteiro do projeto: as TAREFAS (cada uma vira um cartão) e o checklist de cada uma,
+  // criadas automaticamente quando o serviço é contratado. JSON: [{ titulo, itens: [] }].
+  roteiro   Json?
+  // Cláusulas de contrato específicas deste serviço (Markdown). Entram no CONTRATO gerado
+  // automaticamente quando o cliente aceita a proposta, juntando as cláusulas de todos os
+  // serviços contratados. Editável na tela de Serviços.
+  clausulasContrato String? @db.Text
+  ativo     Boolean  @default(true)
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  leads       Lead[]             @relation("LeadServicos")
+  passos      ServicoPasso[]
+  requisitos  ServicoRequisito[]
+  contratacoes ClienteServico[]
+  arquivos    Arquivo[]
+  cards       Card[]
+  projetos    Projeto[]
+
+  @@index([ordem])
+}
+
+/// Vínculo direto Cliente ↔ Serviço: o que o cliente REALMENTE contratou (fonte da
+/// verdade dos "serviços contratados", antes derivada dos leads ganhos). A equipe liga
+/// direto (origem MANUAL); a conversão de um lead ganho gera as contratações (origem
+/// FUNIL). Cancelável pelos dois lados (equipe ou cliente pelo Portal).
+model ClienteServico {
+  id               String    @id @default(cuid())
+  clienteId        String
+  servicoId        String
+  status           String    @default("ATIVO") // ATIVO | CANCELADO
+  origem           String    @default("MANUAL") // MANUAL | FUNIL
+  // O que o cliente REALMENTE paga (herdado do serviço ao contratar; editável). Mesma
+  // estrutura da precificação do catálogo (ADR-33): valor fixo + recorrência, e % mensal.
+  valor                 Float?
+  valorRecorrencia      PrecoRecorrencia @default(AVULSO)
+  percentual            Float?
+  percentualRecorrencia PrecoRecorrencia @default(MENSAL)
+  observacao       String?   @db.Text
+  contratadoEm     DateTime  @default(now())
+  canceladoEm      DateTime?
+  canceladoPorTipo String? // EQUIPE | CLIENTE
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  servico Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@unique([clienteId, servicoId])
+  @@index([clienteId])
+  @@index([servicoId])
+}
+
+/// Exigência (item de checklist) de um serviço: o que é preciso para executá-lo.
+/// tipo DOCUMENTO = o cliente envia um arquivo (upload). tipo BRIEFING = o cliente
+/// preenche um formulário online (Fase 1B). Editável pela Thaís na página Serviços.
+model ServicoRequisito {
+  id           String   @id @default(cuid())
+  servicoId    String
+  titulo       String
+  descricao    String?  @db.Text
+  tipo         String   @default("DOCUMENTO") // DOCUMENTO | BRIEFING
+  obrigatorio  Boolean  @default(true)
+  ordem        Int      @default(0)
+  formularioId String? // quando tipo = BRIEFING: o formulário online a preencher
+  createdAt    DateTime @default(now())
+
+  servico    Servico              @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+  arquivos   Arquivo[]
+  formulario Formulario?          @relation(fields: [formularioId], references: [id], onDelete: SetNull)
+  respostas  FormularioResposta[]
+  checklistItens ChecklistItem[]
+
+  @@index([servicoId])
+}
+
+/// Formulário/briefing online REUTILIZÁVEL (ex.: "Briefing de site"). O cliente preenche
+/// direto na tela (ou baixa). Ligado a um ServicoRequisito do tipo BRIEFING.
+model Formulario {
+  id        String   @id @default(cuid())
+  titulo    String
+  descricao String?  @db.Text
+  ativo     Boolean  @default(true)
+  // interno = criado automaticamente para um requisito do tipo INFORMACAO (pergunta única);
+  // não aparece no catálogo de Formulários (é gerido junto com o requisito).
+  interno   Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  campos     FormularioCampo[]
+  requisitos ServicoRequisito[]
+  respostas  FormularioResposta[]
+}
+
+/// Um campo (pergunta) de um Formulario.
+model FormularioCampo {
+  id           String  @id @default(cuid())
+  formularioId String
+  rotulo       String
+  tipo         String  @default("TEXTO_CURTO") // TEXTO_CURTO|TEXTO_LONGO|ESCOLHA|MULTIPLA|NUMERO|SIM_NAO|DATA
+  obrigatorio  Boolean @default(false)
+  opcoes       String? @db.Text // JSON array de opções (ESCOLHA|MULTIPLA)
+  ajuda        String? // dica exibida ao cliente
+  ordem        Int     @default(0)
+
+  formulario Formulario @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+
+  @@index([formularioId])
+}
+
+/// Resposta de um cliente a um Formulario (por requisito). Preenchida online no Portal.
+model FormularioResposta {
+  id           String    @id @default(cuid())
+  formularioId String
+  clienteId    String
+  requisitoId  String?
+  servicoId    String?
+  respostas    String    @db.Text // JSON { campoId: valor }
+  status       String    @default("RASCUNHO") // RASCUNHO | ENVIADO
+  enviadoEm    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  formulario Formulario        @relation(fields: [formularioId], references: [id], onDelete: Cascade)
+  cliente    Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  requisito  ServicoRequisito? @relation(fields: [requisitoId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId])
+  @@index([formularioId])
+  @@index([requisitoId])
+}
+
+/// Arquivo enviado (upload) — pelo CLIENTE (Portal) ou pela EQUIPE (ficha). Guardado
+/// no disco (UPLOADS_DIR); aqui ficam só os metadados + o caminho relativo. Pode estar
+/// ligado a um serviço/requisito (atende uma exigência) ou ser um documento avulso.
+model Arquivo {
+  id             String    @id @default(cuid())
+  nome           String // nome original (exibição)
+  mimetype       String
+  tamanho        Int
+  caminho        String // caminho relativo dentro de UPLOADS_DIR
+  clienteId      String
+  servicoId      String?
+  requisitoId    String?
+  enviadoPorTipo String // CLIENTE | EQUIPE
+  enviadoPorId   String? // userId de quem enviou (null se sessão de cliente sem user? sempre há user)
+  createdAt      DateTime  @default(now())
+  deletedAt      DateTime?
+
+  cliente   Cliente           @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  servico   Servico?          @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  requisito ServicoRequisito? @relation(fields: [requisitoId], references: [id], onDelete: SetNull)
+
+  @@index([clienteId])
+  @@index([servicoId])
+  @@index([requisitoId])
+  @@index([deletedAt])
+}
+
+/// Passo padrão de um serviço, atrelado a uma etapa do funil. Ao um lead escolher
+/// o serviço, estes passos entram no checklist da etapa correspondente. Editável.
+model ServicoPasso {
+  id          String   @id @default(cuid())
+  servicoId   String
+  titulo      String
+  obrigatorio Boolean  @default(false)
+  etapaChave  String // "novo"|"qualificacao"|"proposta"|"negociacao"|"fechado"
+  ordem       Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  servico Servico @relation(fields: [servicoId], references: [id], onDelete: Cascade)
+
+  @@index([servicoId, etapaChave])
+}
+
+/// Lead (oportunidade). Percorre o pipeline até virar Cliente.
+model Lead {
+  id                    String    @id @default(cuid())
+  nome                  String
+  empresa               String?
+  email                 String?
+  telefone              String?
+  origem                String?
+  // Rastreio de atribuição (UTM/referrer capturados na captação) — de onde veio.
+  rastreio              String?   @db.Text
+  valorEstimado         Float? // estimativa comercial (não é contábil — ver Financeiro/Fase 4)
+  observacoes           String?   @db.Text
+  ordem                 Int       @default(0) // posição dentro da coluna
+  pipelineStageId       String
+  responsavelId         String?
+  convertidoEmClienteId String?
+  // Quando o lead virou cliente (data do ganho) — alimenta o "cliente desde" na ficha.
+  convertidoEm          DateTime?
+  // Perda (lado oposto do ganho): quando marcado, o lead sai do funil ativo e alimenta
+  // o relatório de ganho/perda. Reversível (reabrir limpa os dois campos).
+  perdidoEm             DateTime?
+  motivoPerda           String?
+  // Conta/cliente ligada (Portal do prospect). Independe de ganho/perdido — o lead
+  // continua no funil enquanto convertidoEmClienteId for nulo.
+  clienteId             String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  deletedAt             DateTime?
+
+  pipelineStage       PipelineStage @relation(fields: [pipelineStageId], references: [id])
+  responsavel         User?         @relation("LeadResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  convertidoEmCliente Cliente?      @relation("LeadConvertido", fields: [convertidoEmClienteId], references: [id], onDelete: SetNull)
+  clientePortal       Cliente?      @relation("LeadClientePortal", fields: [clienteId], references: [id], onDelete: SetNull)
+  servicos            Servico[]     @relation("LeadServicos")
+  passos              LeadPasso[]
+
+  @@index([pipelineStageId, ordem])
+  @@index([responsavelId])
+  @@index([clienteId])
+  @@index([deletedAt])
+}
+
+/// Passo do checklist de um lead numa etapa (os "próximos passos" do card).
+/// Semeado a partir do playbook padrão da etapa; editável por lead. Os passos
+/// `obrigatorio` são os critérios de saída — concluídos todos, o lead avança.
+model LeadPasso {
+  id             String    @id @default(cuid())
+  leadId         String
+  stageId        String
+  // Origem: null = passo geral da etapa; senão = do serviço (para agrupar/rotular).
+  servicoId      String?
+  titulo         String
+  obrigatorio    Boolean   @default(false)
+  // Ação de documento ligada ao passo (briefing|proposta|contrato) + documento gerado.
+  acaoDoc        String?
+  documentoId    String?
+  // Regra de automação (null = passo manual). Ex.: "servicos", "valor" — o sistema
+  // conclui/reabre sozinho conforme o estado do lead (passo derivado, reversível).
+  autoRegra      String?
+  ordem          Int       @default(0)
+  concluido      Boolean   @default(false)
+  concluidoEm    DateTime?
+  concluidoPorId String?
+  createdAt      DateTime  @default(now())
+
+  lead Lead @relation(fields: [leadId], references: [id], onDelete: Cascade)
+
+  @@index([leadId, stageId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Projetos + Kanban + Timer (Fase 2)
+// ─────────────────────────────────────────────────────────────
+
+enum ProjetoStatus {
+  ATIVO
+  PAUSADO
+  CONCLUIDO
+}
+
+/// Colunas do kanban de projeto — fluxo de trabalho claro em etapas.
+enum CardStatus {
+  A_FAZER
+  EM_ANDAMENTO
+  AGUARDANDO_CLIENTE
+  AGUARDANDO_TERCEIROS
+  CONCLUIDO
+}
+
+enum Prioridade {
+  BAIXA
+  MEDIA
+  ALTA
+  URGENTE
+}
+
+/// Projeto de um cliente. Contém o kanban de tarefas.
+model Projeto {
+  id            String        @id @default(cuid())
+  clienteId     String
+  nome          String
+  descricao     String?       @db.Text
+  status        ProjetoStatus @default(ATIVO)
+  responsavelId String?
+  // Serviço de origem: um projeto = um serviço contratado do cliente (ADR-38). Nulo em
+  // projetos gerais/manuais. Liga a automação (não recria o projeto do mesmo serviço).
+  servicoId     String?
+  inicio        DateTime?
+  previsaoFim   DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
+
+  cliente       Cliente     @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  responsavel   User?       @relation("ProjetoResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  servico       Servico?    @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  participantes ProjetoParticipante[]
+  cards         Card[]
+  eventos       Evento[]
+  documentos    Documento[]
+
+  @@index([clienteId])
+  @@index([responsavelId])
+  @@index([servicoId])
+  @@index([deletedAt])
+}
+
+/// Participantes de um projeto (equipe que gerencia/acompanha). Além do responsável,
+/// permite mais de uma pessoa por projeto (inspirado nos "project members" do Perfex).
+model ProjetoParticipante {
+  id        String   @id @default(cuid())
+  projetoId String
+  userId    String
+  createdAt DateTime @default(now())
+
+  projeto Projeto @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projetoId, userId])
+  @@index([userId])
+}
+
+/// Cartão/tarefa do kanban.
+model Card {
+  id            String     @id @default(cuid())
+  projetoId     String
+  titulo        String
+  descricao     String?    @db.Text
+  status        CardStatus @default(A_FAZER)
+  prioridade    Prioridade @default(MEDIA)
+  responsavelId String?
+  // Serviço de origem (quando o card foi gerado a partir de um serviço contratado) —
+  // liga o card à automação: entregas do cliente + passos do serviço, status automático.
+  servicoId     String?
+  prazo         DateTime?
+  ordem         Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  deletedAt     DateTime?
+
+  projeto     Projeto         @relation(fields: [projetoId], references: [id], onDelete: Cascade)
+  responsavel User?           @relation("CardResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  servico     Servico?        @relation(fields: [servicoId], references: [id], onDelete: SetNull)
+  checklist   ChecklistItem[]
+  timeEntries TimeEntry[]
+
+  @@index([projetoId, status, ordem])
+  @@index([responsavelId])
+  @@index([servicoId])
+  @@index([deletedAt])
+}
+
+/// Item de checklist de um cartão.
+model ChecklistItem {
+  id        String   @id @default(cuid())
+  cardId    String
+  texto     String
+  concluido Boolean  @default(false)
+  // Se preenchido, este item de checklist é uma ENTREGA DO CLIENTE (exigência do serviço):
+  // marca-se sozinho quando o cliente entrega e não é editável manualmente pela equipe.
+  requisitoId String?
+  ordem     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  card      Card              @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  requisito ServicoRequisito? @relation(fields: [requisitoId], references: [id], onDelete: SetNull)
+
+  @@index([cardId])
+  @@index([requisitoId])
+}
+
+/// Registro de tempo (Timer). Uma sessão inicio→fim por vez.
+model TimeEntry {
+  id         String    @id @default(cuid())
+  cardId     String?
+  userId     String
+  inicio     DateTime  @default(now())
+  fim        DateTime?
+  duracaoSeg Int?
+  descricao  String?
+  createdAt  DateTime  @default(now())
+
+  card Card? @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([cardId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Agenda + Notificações (Fase 3)
+// ─────────────────────────────────────────────────────────────
+
+enum EventoTipo {
+  COMPROMISSO
+  RETORNO
+  REUNIAO
+  LEMBRETE
+  PESSOAL
+}
+
+enum EventoEscopo {
+  PESSOAL
+  EMPRESA
+}
+
+enum Recorrencia {
+  NENHUMA
+  DIARIA
+  SEMANAL
+  MENSAL
+}
+
+/// Evento da agenda (compromisso, retorno, reunião, lembrete, pessoal).
+model Evento {
+  id              String       @id @default(cuid())
+  titulo          String
+  descricao       String?      @db.Text
+  tipo            EventoTipo   @default(COMPROMISSO)
+  escopo          EventoEscopo @default(EMPRESA)
+  inicio          DateTime
+  fim             DateTime?
+  diaInteiro      Boolean      @default(false)
+  local           String?
+  linkReuniao     String?
+  recorrencia     Recorrencia  @default(NENHUMA)
+  recorrenciaAte  DateTime?
+  donoId          String
+  clienteId       String?
+  projetoId       String?
+  lembreteEnviado Boolean      @default(false)
+  // Lembrete por e-mail ao cliente (véspera/no dia). Só eventos não recorrentes.
+  lembreteClienteEnviado Boolean @default(false)
+  // Cliente confirmou presença pelo Portal (nulo = ainda não respondeu).
+  clienteConfirmadoEm    DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  deletedAt       DateTime?
+
+  dono         User                 @relation("EventoDono", fields: [donoId], references: [id], onDelete: Cascade)
+  cliente      Cliente?             @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  projeto      Projeto?             @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  participantes EventoParticipante[]
+
+  @@index([donoId])
+  @@index([inicio])
+  @@index([clienteId])
+  @@index([deletedAt])
+}
+
+/// Participante (membro da equipe) de um evento — além do dono. Cada participante
+/// vê o evento na própria agenda e recebe o lembrete.
+model EventoParticipante {
+  id       String @id @default(cuid())
+  eventoId String
+  userId   String
+
+  evento Evento @relation(fields: [eventoId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventoId, userId])
+  @@index([userId])
+}
+
+/// Notificação empurrada em tempo real (Socket.IO) e persistida.
+model Notificacao {
+  id           String   @id @default(cuid())
+  userId       String
+  tipo         String
+  titulo       String
+  corpo        String?
+  entidadeTipo String?
+  entidadeId   String?
+  lida         Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, lida])
+  @@index([createdAt])
+}
+
+enum EmailStatus {
+  ENVIADO
+  FALHOU
+}
+
+/// Histórico de TODO e-mail enviado pelo sistema, para exibir por destinatário
+/// (lead, cliente, usuário) e supervisão. Vinculado pelo e-mail no momento do envio.
+/// Ids sem FK (é um log — sobrevive à exclusão das entidades).
+model EmailEnviado {
+  id        String      @id @default(cuid())
+  para      String
+  assunto   String
+  template  String?
+  corpo     String      @db.Text
+  status    EmailStatus @default(ENVIADO)
+  // Motivo da falha (mensagem do SMTP ou "modo dev") — só preenchido quando FALHOU.
+  erro      String?     @db.Text
+  userId    String?
+  clienteId String?
+  leadId    String?
+  createdAt DateTime    @default(now())
+
+  @@index([status, createdAt])
+  @@index([userId, createdAt])
+  @@index([clienteId, createdAt])
+  @@index([leadId, createdAt])
+  @@index([para])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Financeiro (Fase 4)
+// ─────────────────────────────────────────────────────────────
+
+enum ContaTipo {
+  PAGAR
+  RECEBER
+}
+
+enum CategoriaTipo {
+  RECEITA
+  DESPESA
+}
+
+/// Carteira financeira: livros da empresa (compartilhados) ou finanças pessoais (privadas por usuário).
+enum Escopo {
+  EMPRESA
+  PESSOAL
+}
+
+/// Categoria financeira (receita ou despesa).
+model Categoria {
+  id        String        @id @default(cuid())
+  nome      String
+  tipo      CategoriaTipo
+  escopo    Escopo        @default(EMPRESA)
+  donoId    String?
+  cor       String?
+  createdAt DateTime      @default(now())
+
+  contas Conta[]
+  dono   User?  @relation("CategoriaDono", fields: [donoId], references: [id], onDelete: Cascade)
+
+  @@index([tipo])
+  @@index([escopo, donoId, tipo])
+}
+
+/// Conta a pagar ou a receber.
+model Conta {
+  id             String      @id @default(cuid())
+  tipo           ContaTipo
+  escopo         Escopo      @default(EMPRESA)
+  donoId         String? // dono da carteira PESSOAL (null = EMPRESA, compartilhada)
+  descricao      String
+  valor          Decimal     @db.Decimal(12, 2)
+  vencimento     DateTime
+  pago           Boolean     @default(false)
+  pagoEm         DateTime?
+  categoriaId    String?
+  clienteId      String?
+  recorrencia    Recorrencia @default(NENHUMA)
+  recorrenciaAte DateTime? // limite opcional da série recorrente
+  recorrenteId   String? // id da 1ª conta da série (herdado pelas geradas); agrupa a série
+  observacoes    String?     @db.Text
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  deletedAt      DateTime?
+
+  categoria Categoria? @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  cliente   Cliente?   @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  dono      User?      @relation("ContaDono", fields: [donoId], references: [id], onDelete: Cascade)
+
+  @@index([tipo, pago])
+  @@index([vencimento])
+  @@index([clienteId])
+  @@index([deletedAt])
+  @@index([escopo, donoId])
+  @@index([recorrenteId])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Mensagens Internas (Fase 6)
+// ─────────────────────────────────────────────────────────────
+
+enum ConversaTipo {
+  INDIVIDUAL
+  GRUPO
+  PROJETO
+  CLIENTE
+}
+
+/// Status do chamado (só conversas tipo CLIENTE — suporte do cliente/lead).
+/// RESOLVIDO = fechado/arquivado no histórico (reabrível).
+enum ChamadoStatus {
+  ABERTO
+  EM_ANDAMENTO
+  RESOLVIDO
+}
+
+/// Prioridade do chamado (helpdesk).
+enum ChamadoPrioridade {
+  BAIXA
+  NORMAL
+  ALTA
+}
+
+model Conversa {
+  id        String       @id @default(cuid())
+  tipo      ConversaTipo
+  nome      String?
+  projetoId String?
+  clienteId String?
+  // Campos de "chamado/ticket" (só tipo CLIENTE): protocolo, assunto, status,
+  // prioridade, responsável e quando foi resolvido (histórico). Um cliente/lead
+  // pode ter VÁRIOS chamados ao longo do tempo (helpdesk — ADR-41).
+  numero        Int?
+  assunto       String?
+  status        ChamadoStatus     @default(ABERTO)
+  prioridade    ChamadoPrioridade @default(NORMAL)
+  responsavelId String?
+  resolvidoEm   DateTime?
+  // Quem criou (admin do grupo — pode renomear/gerir membros).
+  criadoPorId String?
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  deletedAt DateTime?
+
+  cliente     Cliente? @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  responsavel User?    @relation("ConversaResponsavel", fields: [responsavelId], references: [id], onDelete: SetNull)
+  criadoPor   User?    @relation("ConversaCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+
+  participantes ConversaParticipante[]
+  mensagens     Mensagem[]
+
+  @@index([updatedAt])
+  @@index([clienteId])
+  @@index([numero])
+}
+
+model ConversaParticipante {
+  id              String    @id @default(cuid())
+  conversaId      String
+  userId          String
+  ultimaLeituraEm DateTime?
+  // Preferências por usuário (estilo WhatsApp): fixar, silenciar, arquivar, ocultar
+  // ("apagar conversa" só para mim — reaparece se chegar mensagem nova).
+  fixadoEm     DateTime?
+  silenciadoEm DateTime?
+  arquivadoEm  DateTime?
+  ocultoEm     DateTime?
+  createdAt       DateTime  @default(now())
+
+  conversa Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([conversaId, userId])
+  @@index([userId])
+}
+
+model Mensagem {
+  id         String    @id @default(cuid())
+  conversaId String
+  autorId    String
+  conteudo   String    @db.Text
+  editadoEm  DateTime?
+  createdAt  DateTime  @default(now())
+  deletedAt  DateTime?
+
+  conversa Conversa @relation(fields: [conversaId], references: [id], onDelete: Cascade)
+  autor    User     @relation(fields: [autorId], references: [id], onDelete: Cascade)
+
+  @@index([conversaId, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────
+// Documentos Inteligentes (Fase 7 — IA pluga na Fase 9)
+// ─────────────────────────────────────────────────────────────
+
+enum TipoModelo {
+  PROPOSTA
+  CONTRATO
+  BRIEFING
+  ESCOPO
+  ONBOARDING
+  CHECKLIST
+  ATA
+  RELATORIO
+  PAUTA_REUNIAO
+  PAUTA_POSTAGEM
+  RECIBO
+  DIAGNOSTICO
+  PLANO_ACAO
+}
+
+enum StatusDocumento {
+  RASCUNHO
+  EM_REVISAO
+  APROVADO
+  ENVIADO
+}
+
+enum OrigemVersao {
+  MANUAL
+  IA
+}
+
+/// Modelo de documento com placeholders {{...}}.
+model ModeloDocumento {
+  id        String     @id @default(cuid())
+  nome      String
+  tipo      TipoModelo
+  corpo     String     @db.Text
+  ativo     Boolean    @default(true)
+  // true quando a equipe editou o modelo — a semente NUNCA sobrescreve o que foi editado.
+  editadoManualmente Boolean @default(false)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  documentos Documento[]
+}
+
+/// Documento gerado. Fluxo: rascunho → em revisão → aprovado → enviado.
+model Documento {
+  id            String          @id @default(cuid())
+  modeloId      String?
+  clienteId     String?
+  projetoId     String?
+  titulo        String
+  conteudo      String          @db.Text
+  status        StatusDocumento @default(RASCUNHO)
+  // Opcional + SetNull: excluir o usuário criador PRESERVA o documento (propostas/contratos
+  // não podem sumir junto com um funcionário desligado). Ver decisão #1 da finalização.
+  criadoPorId   String?
+  aprovadoPorId String?
+  enviadoEm     DateTime?
+  // Assinatura digital (Fase 3)
+  assinaturaSolicitadaEm DateTime?
+  assinadoEm             DateTime?
+  // Aceite online da PROPOSTA (Fase C — ADR-47): link público token + trilha de auditoria.
+  propostaToken        String?   @unique
+  propostaStatus       String? // PENDENTE | ACEITA | RECUSADA
+  propostaHash         String? // sha256 do conteúdo no momento em que o aceite foi habilitado
+  propostaSolicitadaEm DateTime?
+  propostaRespondidaEm DateTime?
+  propostaRespIp       String?
+  propostaMotivoRecusa String?   @db.Text
+  // Itens estruturados do documento (proposta/contrato): serviços + valores + recorrência.
+  // Fonte da verdade estruturada por trás do Markdown — permite o aceite sincronizar
+  // ClienteServico e o contrato refletir exatamente o que foi proposto/aceito. Ver ADR-81.
+  itens         Json?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  deletedAt     DateTime?
+
+  modelo      ModeloDocumento?  @relation(fields: [modeloId], references: [id], onDelete: SetNull)
+  cliente     Cliente?          @relation(fields: [clienteId], references: [id], onDelete: SetNull)
+  projeto     Projeto?          @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  criadoPor   User?             @relation("DocCriador", fields: [criadoPorId], references: [id], onDelete: SetNull)
+  aprovadoPor User?             @relation("DocAprovador", fields: [aprovadoPorId], references: [id], onDelete: SetNull)
+  versoes     DocumentoVersao[]
+  assinaturas Assinatura[]
+
+  @@index([status])
+  @@index([clienteId])
+  @@index([deletedAt])
+}
+
+/// Assinatura eletrônica "avançada" (Lei 14.063/2020) de um documento por um
+/// signatário. Guarda a trilha de auditoria (IP, user-agent, data/hora) e o HASH
+/// do conteúdo no momento do envio — prova de integridade (documento não alterado).
+model Assinatura {
+  id            String    @id @default(cuid())
+  documentoId   String
+  papel         String // "CLIENTE" | "MEDCONSULTORIA"
+  nome          String
+  email         String?
+  ordem         Int       @default(0)
+  // Token público do link de assinatura. Gerado na aplicação por `gerarTokenPublico()`
+  // (randomBytes 256-bit, criptográfico) — ver decisão #2. Sem @default(cuid()) de propósito.
+  token         String    @unique
+  status        String    @default("PENDENTE") // PENDENTE | ASSINADO
+  metodo        String? // "DESENHO" | "DIGITADO"
+  imagem        String?   @db.Text // data-URI PNG do traço (quando DESENHO)
+  nomeDigitado  String?
+  hashDocumento String? // sha256 do conteúdo no envio
+  ip            String?
+  userAgent     String?   @db.Text
+  assinadoEm    DateTime?
+  criadoEm      DateTime  @default(now())
+
+  documento Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+
+  @@index([documentoId])
+}
+
+/// Histórico de versões do conteúdo (origem MANUAL ou IA).
+model DocumentoVersao {
+  id          String       @id @default(cuid())
+  documentoId String
+  conteudo    String       @db.Text
+  autorId     String?
+  origem      OrigemVersao @default(MANUAL)
+  createdAt   DateTime     @default(now())
+
+  documento Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  autor     User?     @relation(fields: [autorId], references: [id], onDelete: SetNull)
+
+  @@index([documentoId])
+}

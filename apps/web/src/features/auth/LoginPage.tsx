@@ -1,0 +1,109 @@
+import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2, Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from "lucide-react";
+import { loginSchema, type LoginInput } from "@app/shared";
+import { trpc } from "../../lib/trpc";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { AuthShell } from "./AuthShell";
+
+export function LoginPage() {
+  const utils = trpc.useUtils();
+  const login = trpc.auth.login.useMutation({
+    onSuccess: () => utils.auth.me.invalidate(),
+  });
+  const [showPass, setShowPass] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+
+  return (
+    <AuthShell>
+      <div className="mb-8">
+        <h2 className="text-2xl font-semibold tracking-tight text-foreground">Acesse sua conta</h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Informe seu e-mail e senha para entrar no workspace.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit((data) => login.mutate(data))} className="space-y-5" noValidate>
+        <div className="space-y-1.5">
+          <Label htmlFor="email">E-mail</Label>
+          <div className="relative">
+            <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="email"
+              type="email"
+              autoComplete="email"
+              autoFocus
+              placeholder="voce@medconsultoria.com.br"
+              className="pl-10"
+              {...register("email")}
+            />
+          </div>
+          {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor="password">Senha</Label>
+          <div className="relative">
+            <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              id="password"
+              type={showPass ? "text" : "password"}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="pl-10 pr-10"
+              {...register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+              title={showPass ? "Ocultar senha" : "Mostrar senha"}
+              aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}
+            >
+              {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
+          {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+          <div className="flex justify-end pt-0.5">
+            <a href="/esqueci-senha" className="text-xs font-medium text-primary hover:underline">
+              Esqueci minha senha
+            </a>
+          </div>
+        </div>
+
+        {login.error && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <span>{login.error.message}</span>
+          </div>
+        )}
+
+        <Button type="submit" size="lg" className="w-full" disabled={login.isPending}>
+          {login.isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Entrando…
+            </>
+          ) : (
+            <>
+              Entrar
+              <ArrowRight className="h-4 w-4" />
+            </>
+          )}
+        </Button>
+      </form>
+
+      <p className="mt-8 text-center text-xs text-muted-foreground">
+        Problemas para acessar? Fale com o administrador do workspace.
+      </p>
+    </AuthShell>
+  );
+}

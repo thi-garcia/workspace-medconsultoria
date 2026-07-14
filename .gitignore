@@ -1,0 +1,43 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# prisma
+packages/db/prisma/*.db
+
+# storage (uploads locais)
+storage/
+
+# turbo
+.turbo/
+
+# logs
+*.log
+npm-debug.log*
+
+# editor / os
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/
+!.env.deploy.example
+
+# Playwright / screenshots de verificação (não são assets do app)
+.playwright-mcp/
+/*.png
+/apps/web/*.png
+
+# Playwright
+e2e/.auth/
+playwright-report/
+test-results/

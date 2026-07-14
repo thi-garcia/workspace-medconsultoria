@@ -1,0 +1,251 @@
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { LogOut, UserCog, ChevronDown, Lock } from "lucide-react";
+import { useAuth } from "../../lib/auth-context";
+import { trpc } from "../../lib/trpc";
+import { Avatar, AvatarUpload } from "../../components/ui/avatar";
+import { Modal } from "../../components/ui/modal";
+import { Input } from "../../components/ui/input";
+import { Select } from "../../components/ui/select";
+import { MaskedInput } from "../../components/ui/masked-input";
+import { Label } from "../../components/ui/label";
+import { Button } from "../../components/ui/button";
+import { useConfirm } from "../../components/ui/confirm-dialog";
+import { maskCpfCnpj, maskTelefone } from "../../lib/masks";
+
+/** Botão de perfil no header: avatar + nome → menu (Editar perfil, Sair). */
+function ProfileMenu({ onEditar }: { onEditar: () => void }) {
+  const { user, logout, loggingOut } = useAuth();
+  const [aberto, setAberto] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setAberto(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    return () => document.removeEventListener("mousedown", onClick);
+  }, [aberto]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setAberto((v) => !v)}
+        className="flex items-center gap-2 rounded-full border bg-card py-1 pl-1 pr-2.5 shadow-sm outline-none transition-colors hover:bg-accent focus-visible:ring-2 focus-visible:ring-primary/40"
+      >
+        <Avatar id={user.id} nome={user.nome} avatarUrl={user.avatarUrl} className="h-8 w-8" text="text-xs" />
+        <span className="hidden max-w-[160px] truncate text-sm font-medium sm:block">{user.nome}</span>
+        <ChevronDown className={"h-4 w-4 text-muted-foreground transition-transform " + (aberto ? "rotate-180" : "")} />
+      </button>
+      {aberto && (
+        <div className="absolute right-0 z-40 mt-2 w-60 origin-top-right animate-scale-in overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg">
+          <div className="flex items-center gap-3 border-b px-3 py-3">
+            <Avatar id={user.id} nome={user.nome} avatarUrl={user.avatarUrl} className="h-10 w-10" text="text-sm" />
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold">{user.nome}</div>
+              {user.email && <div className="truncate text-xs text-muted-foreground">{user.email}</div>}
+            </div>
+          </div>
+          <div className="p-1.5">
+            <button
+              onClick={() => (setAberto(false), onEditar())}
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent"
+            >
+              <UserCog className="h-4 w-4 text-muted-foreground" /> Editar perfil
+            </button>
+            <button
+              onClick={() => logout()}
+              disabled={loggingOut}
+              className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-60"
+            >
+              <LogOut className="h-4 w-4" /> Sair
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Modal de editar perfil do cliente: foto/logotipo + dados cadastrais que o próprio
+ * cliente pode ver e corrigir (LGPD — direito de acesso e retificação). Escopado ao
+ * clienteId da sessão no backend; nunca expõe campos internos da equipe.
+ */
+function EditarPerfilModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const utils = trpc.useUtils();
+  const confirm = useConfirm();
+
+  const dados = trpc.portal.meusDados.useQuery(undefined, { enabled: open });
+  const [form, setForm] = useState({ nome: "", tipo: "PJ" as "PF" | "PJ", documento: "", email: "", telefone: "" });
+  const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
+
+  useEffect(() => {
+    if (open && dados.data) {
+      setForm({
+        nome: dados.data.nome ?? "",
+        tipo: (dados.data.tipo as "PF" | "PJ") ?? "PJ",
+        documento: dados.data.documento ?? "",
+        email: dados.data.email ?? "",
+        telefone: dados.data.telefone ?? "",
+      });
+    }
+  }, [open, dados.data]);
+
+  const salvar = trpc.portal.atualizarMeusDados.useMutation({
+    onSuccess: () => {
+      utils.auth.me.invalidate();
+      utils.portal.meusDados.invalidate();
+      utils.portal.resumo.invalidate();
+      onClose();
+    },
+  });
+  const removerAvatar = trpc.auth.removerAvatar.useMutation({ onSuccess: () => utils.auth.me.invalidate() });
+
+  const ehPJ = form.tipo === "PJ";
+
+  return (
+    <Modal
+      open={open}
+      onClose={onClose}
+      title="Editar perfil"
+      size="lg"
+      footer={
+        <>
+          <Button variant="outline" onClick={onClose}>
+            Cancelar
+          </Button>
+          <Button
+            disabled={!form.nome.trim() || salvar.isPending || dados.isLoading}
+            onClick={() =>
+              salvar.mutate({
+                nome: form.nome.trim(),
+                tipo: form.tipo,
+                documento: form.documento.trim(),
+                email: form.email.trim(),
+                telefone: form.telefone.trim(),
+              })
+            }
+          >
+            Salvar
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-5">
+        {/* Foto / logotipo */}
+        <div className="space-y-1.5">
+          <Label>Foto ou logotipo</Label>
+          <AvatarUpload
+            id={user.id}
+            nome={user.nome}
+            avatarUrl={user.avatarUrl}
+            onChanged={() => utils.auth.me.invalidate()}
+            onRemover={async () => {
+              if (
+                await confirm({
+                  title: "Remover foto",
+                  description: "A foto/logotipo será removida do seu perfil.",
+                  confirmText: "Remover",
+                  variant: "destructive",
+                })
+              )
+                removerAvatar.mutate();
+            }}
+            podeRemover
+          />
+          <p className="text-xs text-muted-foreground">Pode ser a sua foto ou o logotipo da sua empresa/clínica. JPG, PNG ou WebP, até 5 MB.</p>
+        </div>
+
+        {/* Dados cadastrais */}
+        <div className="space-y-3 border-t pt-4">
+          <div>
+            <h3 className="text-sm font-semibold">Seus dados cadastrais</h3>
+            <p className="text-xs text-muted-foreground">Mantenha seus dados atualizados para o seu atendimento.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="perfil-nome">{ehPJ ? "Nome da empresa/clínica" : "Nome completo"}</Label>
+            <Input id="perfil-nome" value={form.nome} onChange={(e) => set("nome", e.target.value)} placeholder={ehPJ ? "Ex.: Clínica Saúde+" : "Seu nome completo"} />
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-tipo">Tipo de cadastro</Label>
+              <Select id="perfil-tipo" value={form.tipo} onChange={(e) => set("tipo", e.target.value)}>
+                <option value="PJ">Pessoa jurídica (empresa/clínica)</option>
+                <option value="PF">Pessoa física</option>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-doc">{ehPJ ? "CNPJ" : "CPF"}</Label>
+              <MaskedInput
+                id="perfil-doc"
+                inputMode="numeric"
+                format={maskCpfCnpj}
+                value={form.documento}
+                onChange={(e) => set("documento", e.target.value)}
+                placeholder={ehPJ ? "00.000.000/0000-00" : "000.000.000-00"}
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-email">E-mail</Label>
+              <Input
+                id="perfil-email"
+                type="email"
+                inputMode="email"
+                value={form.email}
+                onChange={(e) => set("email", e.target.value)}
+                placeholder="voce@exemplo.com.br"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="perfil-tel">Telefone</Label>
+              <MaskedInput
+                id="perfil-tel"
+                inputMode="tel"
+                format={maskTelefone}
+                value={form.telefone}
+                onChange={(e) => set("telefone", e.target.value)}
+                placeholder="(11) 90000-0000"
+              />
+            </div>
+          </div>
+
+          {salvar.error && <p className="text-sm text-destructive">{salvar.error.message}</p>}
+
+          <p className="flex items-start gap-2 rounded-md bg-muted/60 px-3 py-2 text-xs text-muted-foreground">
+            <Lock className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+            <span>
+              Seus dados são tratados conforme a <strong>LGPD</strong> (Lei nº 13.709/2018) e usados apenas para o seu atendimento. Você pode consultar e corrigir seus
+              dados aqui a qualquer momento.
+            </span>
+          </p>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+export function PortalLayout({ children }: { children: ReactNode }) {
+  const [editar, setEditar] = useState(false);
+  return (
+    <div className="min-h-screen bg-muted/30">
+      <header className="sticky top-0 z-30 border-b bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
+        <div className="mx-auto flex h-16 max-w-4xl items-center gap-3 px-4">
+          <img src="/logo.png" alt="MedConsultoria" className="h-8 w-auto" />
+          <div className="ml-auto">
+            <ProfileMenu onEditar={() => setEditar(true)} />
+          </div>
+        </div>
+      </header>
+      <main className="mx-auto max-w-4xl px-4 py-6 md:py-8">{children}</main>
+      {/* Modal FORA do header: um ancestral com backdrop-filter prende elementos position:fixed. */}
+      <EditarPerfilModal open={editar} onClose={() => setEditar(false)} />
+    </div>
+  );
+}
