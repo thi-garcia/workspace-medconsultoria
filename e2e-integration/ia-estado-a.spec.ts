@@ -8,6 +8,12 @@ test.use({ storageState: "e2e/.auth/admin.json" });
 
 test("IA habilitada: 'Gerar meu plano' mostra loading, retorna resposta e não vaza a chave", async ({ page }) => {
   test.setTimeout(60_000);
+  // Depende de OPENAI_API_KEY real (integração externa) — a CI NÃO tem chave por design.
+  // Se a IA estiver desabilitada, pula (suíte de integração externa, não a funcional principal).
+  const disp = await page.request.get("/trpc/ia.disponivel");
+  const disponivel = ((await disp.json()) as { result: { data: { json: { disponivel: boolean } } } }).result.data.json.disponivel;
+  test.skip(!disponivel, "IA desabilitada (sem OPENAI_API_KEY) — chamada real roda só com chave");
+
   await page.goto("/");
   const botao = page.getByRole("button", { name: /Gerar meu plano/i });
   await expect(botao).toBeVisible();
