@@ -1,12 +1,14 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { readFileSync } from "node:fs";
 
 // Cenário 10 — Reset de senha: exercita os endpoints HTTP (tRPC, superjson) do fluxo real.
 // Garante: token válido consome e redefine; uso ÚNICO (reuso falha); expirado falha;
 // e-mail inexistente responde ok:true (sem enumeração de usuário).
-// Setup dos tokens (hash SHA-256 no banco) é feito fora; os RAW chegam via env.
+// Os RAW dos tokens (hash SHA-256 no banco) vêm da fixture determinística semeada no setup.
 const BASE = "http://localhost:4310";
-const RAW_VALID = process.env.RAW_VALID ?? "";
-const RAW_EXPIRED = process.env.RAW_EXPIRED ?? "";
+const FIX = JSON.parse(readFileSync("e2e/.auth/fixtures.json", "utf8")) as { resetRawValid: string; resetRawExpired: string };
+const RAW_VALID = FIX.resetRawValid;
+const RAW_EXPIRED = FIX.resetRawExpired;
 
 function jsonBody(input: unknown) {
   return { data: { json: input }, headers: { "content-type": "application/json" } };
@@ -17,9 +19,6 @@ function inputQuery(input: unknown) {
 async function dataJson(res: { json: () => Promise<unknown> }) {
   return (await res.json() as { result: { data: { json: unknown } } }).result.data.json;
 }
-
-// Consome tokens (one-shot): só roda quando o setup exportou os RAW; senão pula (main verde).
-test.skip(!RAW_VALID || !RAW_EXPIRED, "requer setup: RAW_VALID/RAW_EXPIRED via env (scripts de reset)");
 
 test("reset de senha: uso único, expiração e sem enumeração — via HTTP", async ({ playwright }) => {
   const req: APIRequestContext = await playwright.request.newContext({ baseURL: BASE });

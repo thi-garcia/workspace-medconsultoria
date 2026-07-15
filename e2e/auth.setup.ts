@@ -1,5 +1,6 @@
 import { test as setup, expect } from "@playwright/test";
 import { mkdirSync } from "node:fs";
+import { execSync } from "node:child_process";
 
 // E-mails dos papéis-semente (públicos). Senha por env (default = senha demo local, NÃO é segredo de prod).
 const PASS = process.env.E2E_PASSWORD ?? "medconsultoria123";
@@ -24,3 +25,9 @@ for (const [role, email] of Object.entries(USERS)) {
     await page.context().storageState({ path: `e2e/.auth/${role}.json` });
   });
 }
+
+// Fixtures determinísticas (briefing + tokens de reset) — sem elas os specs correspondentes
+// não têm o que exercitar. Idempotente e com lookup dinâmico do cliente (portável p/ CI).
+setup("seed fixtures", async () => {
+  execSync("pnpm exec tsx scripts/e2e-fixtures.ts", { stdio: "inherit" });
+});

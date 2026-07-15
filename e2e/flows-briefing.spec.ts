@@ -19,10 +19,8 @@ async function dataJson(res: { json: () => Promise<unknown> }) {
 test("briefing: cliente preenche todos os tipos de campo, envia e persiste (HTTP)", async ({ playwright }) => {
   const cliente: APIRequestContext = await playwright.request.newContext({ baseURL: BASE, storageState: "e2e/.auth/cliente.json" });
 
-  // 1. Cliente abre o briefing → 7 campos, um por tipo
+  // 1. Cliente abre o briefing → 7 campos, um por tipo (fixture determinística semeada no setup)
   const g = await cliente.get(`/trpc/portal.briefing.get${q({ requisitoId: REQ })}`);
-  // Fixture semeado via DB (marcado E2E). Sem ele, pula — mantém a main verde.
-  test.skip(g.status() === 404, "requer briefing E2E semeado no banco (ServicoRequisito e2ereqbrief…)");
   expect(g.status()).toBe(200);
   const form = (await dataJson(g)) as { campos: { id: string; tipo: string }[] };
   expect(form.campos.length).toBe(7);
