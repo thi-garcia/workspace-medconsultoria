@@ -312,19 +312,18 @@ export function ProjetosListPage() {
             return (
               <div
                 key={p.id}
-                role="button"
-                tabIndex={0}
-                onClick={() => abrirProjeto(p.id)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === " ") {
-                    e.preventDefault();
-                    abrirProjeto(p.id);
-                  }
-                }}
-                className="group flex cursor-pointer flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                className="group relative flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md focus-within:ring-2 focus-within:ring-primary/40"
               >
                 <div className="flex items-start gap-2">
-                  <span className="min-w-0 flex-1 font-medium text-foreground group-hover:text-primary">{p.nome}</span>
+                  {/* Botão-título com área clicável esticada (padrão de card acessível: um único
+                      elemento interativo cobre o card; ações internas sobem com z-10). */}
+                  <button
+                    type="button"
+                    onClick={() => abrirProjeto(p.id)}
+                    className="min-w-0 flex-1 cursor-pointer text-left font-medium text-foreground outline-none after:absolute after:inset-0 after:rounded-xl group-hover:text-primary"
+                  >
+                    {p.nome}
+                  </button>
                   <Badge variant={statusVariant[p.status]}>{statusLabel[p.status] ?? p.status}</Badge>
                 </div>
 
@@ -348,8 +347,9 @@ export function ProjetosListPage() {
                   )}
                 </div>
 
-                {/* Rodapé: link para o cliente + responsável + ações (não abrem o projeto) */}
-                <div className="mt-auto flex items-center justify-between gap-2 border-t pt-2.5">
+                {/* Rodapé: link para o cliente + responsável + ações (não abrem o projeto).
+                    z-10 para ficar ACIMA da área clicável esticada do título. */}
+                <div className="relative z-10 mt-auto flex items-center justify-between gap-2 border-t pt-2.5">
                   <Link
                     to="/clientes/$clienteId"
                     params={{ clienteId: p.cliente.id }}

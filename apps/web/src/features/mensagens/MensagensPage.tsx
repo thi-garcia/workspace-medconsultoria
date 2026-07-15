@@ -263,7 +263,7 @@ export function MensagensPage() {
                       {c.silenciado && <BellOff className="h-3 w-3 shrink-0 text-muted-foreground" />}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {c.tipo === "CLIENTE" && c.numero ? <span className="text-muted-foreground/70">#{c.numero} </span> : null}
+                      {c.tipo === "CLIENTE" && c.numero ? <span className="text-muted-foreground">#{c.numero} </span> : null}
                       {c.assunto ? <span className="font-medium">{c.assunto}: </span> : null}
                       {c.ultimaMensagem?.conteudo ?? "Sem mensagens"}
                     </div>

@@ -542,7 +542,7 @@ function EventoChip({ ev, onClick, draggable, onDragStart, conflito }: { ev: Occ
       title={`${conflito ? "⚠ Conflito de horário · " : ""}${intervaloTexto(ev)} · ${ev.titulo}${ev.cliente ? ` — ${ev.cliente.nome}` : ""}`}
     >
       {conflito && <AlertTriangle className="h-2.5 w-2.5 shrink-0 text-warning" />}
-      {!ev.diaInteiro && <span className="shrink-0 tabular-nums opacity-80">{hora(ev.inicio)}</span>}
+      {!ev.diaInteiro && <span className="shrink-0 tabular-nums">{hora(ev.inicio)}</span>}
       {ev.recorrencia !== "NENHUMA" && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-70" />}
       {ev.linkReuniao && <Video className="h-2.5 w-2.5 shrink-0 opacity-70" />}
       <span className="truncate">{ev.titulo}</span>
@@ -649,7 +649,7 @@ function TimeGrid({
       </div>
 
       {/* Grade rolável */}
-      <div ref={scrollRef} className="relative min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollRef} tabIndex={0} role="region" aria-label="Grade de horários" className="relative min-h-0 flex-1 overflow-y-auto">
         <div ref={gridRef} className="relative flex" style={{ height: 24 * HOUR_PX }} onPointerMove={moverArraste} onPointerUp={soltarArraste}>
           {/* Gutter de horas */}
           <div className="relative shrink-0" style={{ width: GUTTER }}>
@@ -730,7 +730,7 @@ function TimeGrid({
                         {ev.clienteConfirmadoEm && <CheckCircle2 className="h-2.5 w-2.5 shrink-0 text-success" />}
                       </div>
                       {height > 30 && (
-                        <div className="truncate opacity-80">
+                        <div className="truncate">
                           {intervaloTexto(ev)}
                           {ev.cliente ? ` · ${ev.cliente.nome}` : ""}
                         </div>

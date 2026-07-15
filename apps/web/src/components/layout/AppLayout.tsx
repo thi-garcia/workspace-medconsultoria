@@ -187,7 +187,7 @@ function UserMenu({ colapsada, onNavigate }: { colapsada: boolean; onNavigate?: 
           <>
             <span className="min-w-0 flex-1">
               <span className="block truncate text-sm font-medium text-white">{user.nome}</span>
-              <span className="block truncate text-[11px] text-white/50">{ROLE_LABEL[user.role]}</span>
+              <span className="block truncate text-[11px] text-white/70">{ROLE_LABEL[user.role]}</span>
             </span>
             <ChevronsUpDown className="h-4 w-4 shrink-0 text-white/40" />
           </>
@@ -241,7 +241,7 @@ function SidebarConteudo({
               <div className="truncate text-[15px] font-semibold tracking-tight text-white">
                 MedConsultoria
               </div>
-              <div className="truncate text-[11px] font-medium text-white/45">Workspace</div>
+              <div className="truncate text-[11px] font-medium text-white/70">Workspace</div>
             </div>
             {onToggle && (
               <button
@@ -262,7 +262,7 @@ function SidebarConteudo({
             {colapsada ? (
               <div className="mx-2 mb-1 border-t border-white/10 first:border-0" />
             ) : (
-              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/35">
+              <p className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-white/70">
                 {grupo.titulo}
               </p>
             )}

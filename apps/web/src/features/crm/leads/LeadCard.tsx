@@ -45,7 +45,10 @@ export function LeadCard({
   convidandoPortal?: boolean;
   overlay?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+  // Sem `attributes` do dnd-kit no card: elas adicionam role="button", o que, com botões de ação
+  // dentro, viola `nested-interactive` (axe). O arraste continua pelo `listeners` (ponteiro) e o
+  // clique do mouse abre; o teclado abre pelo BOTÃO do nome (abaixo).
+  const { listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: lead.id,
   });
 
@@ -61,7 +64,7 @@ export function LeadCard({
 
   // O card inteiro é a "alça" de arrastar (exceto os botões de ação, que param a
   // propagação do pointerdown). A restrição de distância (6px) evita disparar no clique.
-  const dragProps = overlay ? {} : { ...attributes, ...listeners };
+  const dragProps = overlay ? {} : { ...listeners };
 
   return (
     <div
@@ -77,7 +80,16 @@ export function LeadCard({
       <div className="flex items-start gap-2">
         {!overlay && <GripVertical className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/40" aria-hidden />}
         <div className="min-w-0 flex-1">
-          <div className="truncate font-medium">{lead.nome}</div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen?.();
+            }}
+            className="block max-w-full truncate rounded text-left font-medium outline-none hover:text-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+          >
+            {lead.nome}
+          </button>
           {lead.empresa && (
             <div className="truncate text-xs text-muted-foreground">{lead.empresa}</div>
           )}

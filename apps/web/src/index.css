@@ -23,21 +23,24 @@
     --secondary-foreground: 218 60% 22%;
 
     --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+    /* WCAG AA: 47% dava ~4.3:1 nos fundos claros → 42% (≥5.4:1). Mesmo cinza-azulado. */
+    --muted-foreground: 215 16% 42%;
 
     /* Azul claro #2DA8E1 como acento (tint claro para fundos de hover) */
     --accent: 199 90% 95%;
     --accent-foreground: 218 100% 28%;
 
-    --destructive: 0 72% 51%;
+    /* WCAG AA: 51% falhava como texto sobre tints claros → 47% (mesma família vermelha). */
+    --destructive: 0 72% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Verde #30AD73 */
-    --success: 152 57% 43%;
+    /* Verde #30AD73 (marca). WCAG AA: texto verde sobre claro exige ~33% (era 43%). Fills com
+       texto branco ficam com contraste ainda maior; a família verde é preservada. */
+    --success: 152 62% 27%;
     --success-foreground: 0 0% 100%;
 
-    /* Âmbar (atenção) */
-    --warning: 38 92% 50%;
+    /* Âmbar (atenção). WCAG AA: texto âmbar sobre claro exige ~34% (era 50%). Fills mantêm branco. */
+    --warning: 38 96% 29%;
     --warning-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;

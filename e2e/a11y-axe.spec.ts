@@ -5,18 +5,13 @@ import AxeBuilder from "@axe-core/playwright";
 // Falha em violações CRÍTICAS/SÉRIAS; as moderadas são registradas (log) para análise.
 const PAGINAS_EQUIPE = ["/", "/clientes", "/leads", "/projetos", "/agenda", "/mensagens", "/documentos", "/financeiro", "/usuarios"];
 
-// color-contrast (sério, difuso) depende da PALETA DA MARCA (muted-foreground e afins) — mudá-la é
-// decisão de identidade/produto do dono, não correção cirúrgica; fica registrada, fora do gate.
-// nested-interactive e scrollable-region-focusable ficam registradas para revisão estrutural.
-const REGISTRADAS_SEM_GATE = new Set(["color-contrast", "nested-interactive", "scrollable-region-focusable"]);
-
+// Gate estrito: nenhuma violação crítica ou séria nas telas cobertas (contraste, nested-interactive
+// e scrollable-region-focusable foram corrigidos — ver index.css e os cards de leads/projetos).
 async function varrer(page: import("@playwright/test").Page, url: string) {
   await page.goto(url);
   await page.waitForLoadState("networkidle").catch(() => {});
   const r = await new AxeBuilder({ page }).withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"]).analyze();
-  const bloqueantes = r.violations.filter((v) => (v.impact === "critical" || v.impact === "serious") && !REGISTRADAS_SEM_GATE.has(v.id));
-  const registradas = r.violations.filter((v) => REGISTRADAS_SEM_GATE.has(v.id));
-  if (registradas.length) console.log(`[a11y:${url}] registradas (design/estrutural, fora do gate): ${registradas.map((v) => `${v.id}[${v.impact}](${v.nodes.length})`).join(", ")}`);
+  const bloqueantes = r.violations.filter((v) => v.impact === "critical" || v.impact === "serious");
   if (bloqueantes.length) console.log(`[a11y:${url}] BLOQUEANTES: ${bloqueantes.map((v) => `${v.id}[${v.impact}](${v.nodes.length})`).join(", ")}`);
   return bloqueantes;
 }
