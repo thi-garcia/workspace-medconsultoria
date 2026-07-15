@@ -92,8 +92,13 @@ jobs:
         run: |
           pnpm dev > dev.log 2>&1 &
           timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'
-      - name: E2E (Playwright)
-        run: pnpm exec playwright test
+      - name: E2E principal (Playwright)
+        run: pnpm exec playwright test --reporter=list,json
+        env:
+          PLAYWRIGHT_JSON_OUTPUT_NAME: pw-report.json
+      - name: Gate — 0 skipped na suíte funcional principal
+        run: |
+          node -e "const r=require('./pw-report.json');const s=r.stats.skipped||0;const u=r.stats.unexpected||0;console.log('skipped='+s,'failed='+u);if(s>0||u>0)process.exit(1);console.log('OK sem skipped/failed')"
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -101,4 +106,71 @@ jobs:
           path: |
             playwright-report
             test-results
+          retention-days: 7
+
+  integration:
+    # Integração externa (convites/SMTP) — NÃO usa SMTP/OpenAI reais; e-mail vai para o Mailpit.
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: medconsultoria
+          MYSQL_DATABASE: medconsultoria
+          MYSQL_USER: medconsultoria
+          MYSQL_PASSWORD: medconsultoria
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pmedconsultoria"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      DATABASE_URL: "mysql://medconsultoria:medconsultoria@127.0.0.1:3307/medconsultoria"
+      SESSION_SECRET: "ci-integration-secret-32bytes-minimo-xx"
+      WEB_ORIGIN: "http://localhost:4310"
+      # SMTP de TESTE apontando para o Mailpit (sink local) — nada sai para a internet.
+      SMTP_HOST: "localhost"
+      SMTP_PORT: "1025"
+      SMTP_USER: "test@mailpit.local"
+      SMTP_PASS: "test"
+      SMTP_FROM: "MedConsultoria <no-reply@medconsultoria.com.br>"
+      SEED_ROOT_EMAIL: "root@medconsultoria.com.br"
+      SEED_ROOT_PASSWORD: "medconsultoria123"
+      SEED_ROOT_NOME: "Root"
+      E2E_PASSWORD: "medconsultoria123"
+      NODE_ENV: "development"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10.19.0 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20.19.2"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @app/db exec prisma generate
+      - run: pnpm --filter @app/db exec prisma migrate deploy
+      - name: Seed determinístico
+        run: |
+          pnpm db:seed
+          pnpm db:demo
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Subir app (SMTP→Mailpit) e aguardar health
+        run: |
+          pnpm dev > dev.log 2>&1 &
+          timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'
+      - name: Criar storageState (setup de auth da suíte principal)
+        run: pnpm exec playwright test --project=setup
+      - name: Testes de integração (convites + SMTP via Mailpit)
+        run: pnpm exec playwright test --config playwright.integration.config.ts
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: integration-report
+          path: test-results
           retention-days: 7
