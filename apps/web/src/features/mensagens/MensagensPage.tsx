@@ -4,7 +4,7 @@ import {
   Pin, PinOff, BellOff, Bell, Archive, ArchiveRestore, Trash2, Pencil, Check, X, CheckCircle2, RotateCcw, Flag, ChevronLeft,
 } from "lucide-react";
 import { cn } from "@app/ui";
-import { CHAMADO_STATUS_LABEL, CONVERSA_CATEGORIA_LABEL, type ConversaCategoria, type ChamadoStatus, type ChamadoPrioridade } from "@app/shared";
+import { CHAMADO_STATUS_LABEL, CONVERSA_CATEGORIA_LABEL, type ConversaCategoria, type ChamadoStatus } from "@app/shared";
 import type { inferRouterOutputs } from "@trpc/server";
 import type { AppRouter } from "@app/api/router";
 import { trpc } from "../../lib/trpc";
@@ -29,7 +29,6 @@ const statusBadge: Record<ChamadoStatus, string> = {
   EM_ANDAMENTO: "bg-brand-blueLight/15 text-brand-blueText",
   RESOLVIDO: "bg-success/15 text-success",
 };
-const prioridadeCor: Record<ChamadoPrioridade, string> = { BAIXA: "text-muted-foreground", NORMAL: "text-muted-foreground", ALTA: "text-destructive" };
 
 function ConvAvatar({ c, size = "h-9 w-9" }: { c: Conversa; size?: string }) {
   const base = cn("flex shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white", size);

@@ -576,10 +576,11 @@ function TimeGrid({
   const dragInfo = useRef<{ occ: Occ; startX: number; startY: number; colW: number } | null>(null);
   const moveuRef = useRef(false);
 
-  // Rola até as 7h ao abrir/trocar de dia.
+  // Rola até as 7h ao abrir/trocar de dia. (expressão extraída para checagem estática das deps)
+  const primeiroDiaKey = dias[0]?.toDateString();
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollTop = 7 * HOUR_PX - 8;
-  }, [dias[0]?.toDateString()]);
+  }, [primeiroDiaKey]);
 
   // Linha do "agora".
   const [agora, setAgora] = useState(() => new Date());
@@ -768,7 +769,7 @@ function MesView({
 }) {
   const inicio = startOfWeek(startOfMonth(dataRef));
   const dias = Array.from({ length: 42 }, (_, i) => addDays(inicio, i));
-  const [arrastandoId, setArrastandoId] = useState<string | null>(null);
+  const [, setArrastandoId] = useState<string | null>(null);
 
   const soltarNoDia = (destino: Date, e: React.DragEvent) => {
     e.preventDefault();

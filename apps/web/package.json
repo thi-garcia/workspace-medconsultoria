@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src --config ../../eslint.config.mjs",
+    "lint": "cd ../.. && eslint apps/web/src --config eslint.config.mjs",
     "test": "vitest run"
   },
   "dependencies": {

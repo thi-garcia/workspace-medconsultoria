@@ -41,7 +41,8 @@ export function DocumentosPage() {
   const [fSit, setFSit] = useState<FiltroSit>("");
 
   const docs = trpc.documentos.list.useQuery();
-  const lista = docs.data ?? [];
+  // Referência estável (senão `?? []` gera novo array a cada render e derrota os useMemo abaixo).
+  const lista = useMemo(() => docs.data ?? [], [docs.data]);
 
   const clientes = useMemo(() => {
     const set = new Set<string>();

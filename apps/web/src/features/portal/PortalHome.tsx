@@ -1,8 +1,7 @@
-import { useEffect, useState } from "react";
-import { FolderKanban, FileText, Video, CalendarDays, LifeBuoy, Mail, Compass, PenLine, RotateCcw, HeartHandshake, Sparkles, Send, Hourglass, CalendarPlus, CheckCircle2, MapPin } from "lucide-react";
+import { useState } from "react";
+import { FolderKanban, FileText, Video, CalendarDays, Mail, Compass, PenLine, RotateCcw, HeartHandshake, Sparkles, Send, Hourglass, CalendarPlus, CheckCircle2, MapPin } from "lucide-react";
 import { situacaoDocumento } from "@app/shared";
 import { trpc } from "../../lib/trpc";
-import { getSocket } from "../../lib/socket";
 import { dataHora, data } from "../../lib/format-date";
 import { Card, CardHeader, CardTitle } from "../../components/ui/card";
 import { Skeleton } from "../../components/ui/skeleton";
