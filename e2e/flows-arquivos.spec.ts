@@ -54,6 +54,14 @@ test("upload/download HTTP: válido, tipo inválido, tamanho e isolamento entre 
   expect((await anon.get(`/arquivos/${idProprio}`)).status()).toBe(401);
   await anon.dispose();
 
+  // Limpeza: remove os arquivos criados (não deixar acumular na ficha dos clientes).
+  for (const id of [idOutro, idProprio]) {
+    await admin.post("/trpc/clientes.removerArquivo", {
+      data: { json: { id } },
+      headers: { "content-type": "application/json" },
+    });
+  }
+
   await admin.dispose();
   await cliente.dispose();
 });

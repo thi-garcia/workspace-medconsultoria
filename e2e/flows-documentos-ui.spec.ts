@@ -17,6 +17,7 @@ test("upload pela UI: widget real anexa, lista, baixa (conteúdo confere) e remo
   // 1. Anexar pelo widget REAL (input file oculto atrás do botão "Anexar documento")
   const botao = page.getByRole("button", { name: "Anexar documento" });
   await expect(botao).toBeVisible();
+  await botao.scrollIntoViewIfNeeded();
   await botao.locator('xpath=preceding-sibling::input[@type="file"]').setInputFiles({ name: nome, mimeType: "application/pdf", buffer: CONTEUDO });
 
   // 2. Aparece na lista da ficha
