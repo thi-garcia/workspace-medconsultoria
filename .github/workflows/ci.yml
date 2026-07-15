@@ -40,7 +40,9 @@ jobs:
       - name: Migrar bancos (dev + isolado _test)
         run: |
           pnpm --filter @app/db exec prisma migrate deploy
-          mysql -h 127.0.0.1 -P 3307 -umedconsultoria -pmedconsultoria -e "CREATE DATABASE IF NOT EXISTS medconsultoria_test CHARACTER SET utf8mb4;"
+          # O usuário `medconsultoria` NÃO tem privilégio para criar outro banco (ERROR 1044).
+          # Cria o _test como ROOT e concede acesso ao usuário do app (senão o step falhava → exit 1).
+          mysql -h 127.0.0.1 -P 3307 -uroot -pmedconsultoria -e "CREATE DATABASE IF NOT EXISTS medconsultoria_test CHARACTER SET utf8mb4; GRANT ALL PRIVILEGES ON medconsultoria_test.* TO 'medconsultoria'@'%'; FLUSH PRIVILEGES;"
           DATABASE_URL="mysql://medconsultoria:medconsultoria@127.0.0.1:3307/medconsultoria_test" pnpm --filter @app/db exec prisma migrate deploy
       - run: pnpm lint
       - run: pnpm -r typecheck
@@ -50,6 +52,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       mysql:
         image: mysql:8.4
@@ -88,10 +91,22 @@ jobs:
           pnpm db:seed
           pnpm db:demo
       - run: pnpm exec playwright install --with-deps chromium
+      # `turbo run dev` NÃO repassa env vars do job às tasks (a API validava config e caía → 124).
+      # O app carrega o .env via env.ts; escrevê-lo aqui garante DATABASE_URL/SESSION_SECRET no boot.
+      - name: Escrever .env para o app (turbo não repassa env às tasks)
+        run: |
+          printf 'DATABASE_URL=%s\nSESSION_SECRET=%s\nWEB_ORIGIN=%s\nNODE_ENV=%s\n' \
+            "$DATABASE_URL" "$SESSION_SECRET" "$WEB_ORIGIN" "$NODE_ENV" > .env
       - name: Subir app (api + web) e aguardar health
         run: |
           pnpm dev > dev.log 2>&1 &
-          timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'
+          echo $! > dev.pid
+          if ! timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'; then
+            echo "::error::app não ficou saudável em 150s — dev.log abaixo:"
+            cat dev.log || true
+            exit 1
+          fi
+          echo "✓ app saudável (web 4310 + api 4319)"
       - name: E2E principal (Playwright)
         run: pnpm exec playwright test --reporter=list,json
         env:
@@ -99,6 +114,9 @@ jobs:
       - name: Gate — 0 skipped na suíte funcional principal
         run: |
           node -e "const r=require('./pw-report.json');const s=r.stats.skipped||0;const u=r.stats.unexpected||0;console.log('skipped='+s,'failed='+u);if(s>0||u>0)process.exit(1);console.log('OK sem skipped/failed')"
+      - name: Encerrar app
+        if: always()
+        run: kill "$(cat dev.pid 2>/dev/null)" 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
@@ -106,11 +124,14 @@ jobs:
           path: |
             playwright-report
             test-results
+            dev.log
+          if-no-files-found: ignore
           retention-days: 7
 
   integration:
     # Integração externa (convites/SMTP) — NÃO usa SMTP/OpenAI reais; e-mail vai para o Mailpit.
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     services:
       mysql:
         image: mysql:8.4
@@ -160,17 +181,35 @@ jobs:
           pnpm db:seed
           pnpm db:demo
       - run: pnpm exec playwright install --with-deps chromium
+      - name: Aguardar Mailpit (SMTP :1025 / API :8025)
+        run: timeout 60 bash -c 'until curl -sf http://localhost:8025/api/v1/messages >/dev/null; do sleep 2; done' && echo "✓ Mailpit no ar"
+      - name: Escrever .env (SMTP→Mailpit; turbo não repassa env às tasks)
+        run: |
+          printf 'DATABASE_URL=%s\nSESSION_SECRET=%s\nWEB_ORIGIN=%s\nNODE_ENV=%s\nSMTP_HOST=%s\nSMTP_PORT=%s\nSMTP_USER=%s\nSMTP_PASS=%s\nSMTP_FROM=%s\n' \
+            "$DATABASE_URL" "$SESSION_SECRET" "$WEB_ORIGIN" "$NODE_ENV" "$SMTP_HOST" "$SMTP_PORT" "$SMTP_USER" "$SMTP_PASS" "$SMTP_FROM" > .env
       - name: Subir app (SMTP→Mailpit) e aguardar health
         run: |
           pnpm dev > dev.log 2>&1 &
-          timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'
+          echo $! > dev.pid
+          if ! timeout 150 bash -c 'until curl -sf http://localhost:4310 >/dev/null && curl -sf http://localhost:4319/health >/dev/null; do sleep 3; done'; then
+            echo "::error::app não ficou saudável em 150s — dev.log abaixo:"
+            cat dev.log || true
+            exit 1
+          fi
+          echo "✓ app saudável"
       - name: Criar storageState (setup de auth da suíte principal)
         run: pnpm exec playwright test --project=setup
       - name: Testes de integração (convites + SMTP via Mailpit)
         run: pnpm exec playwright test --config playwright.integration.config.ts
+      - name: Encerrar app
+        if: always()
+        run: kill "$(cat dev.pid 2>/dev/null)" 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: integration-report
-          path: test-results
+          path: |
+            test-results
+            dev.log
+          if-no-files-found: ignore
           retention-days: 7
