@@ -515,7 +515,7 @@ export function LeadsPipelinePage() {
                 className="pl-9"
               />
             </div>
-            <Select value={filtroResp} onChange={(e) => setFiltroResp(e.target.value)} className="w-56">
+            <Select aria-label="Filtrar por responsável" value={filtroResp} onChange={(e) => setFiltroResp(e.target.value)} className="w-56">
               <option value="">Todos os responsáveis</option>
               {(equipe.data ?? []).map((u) => (
                 <option key={u.id} value={u.id}>

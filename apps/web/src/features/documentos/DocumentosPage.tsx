@@ -150,7 +150,7 @@ export function DocumentosPage() {
           />
         </div>
         <div className="w-full sm:w-44">
-          <Select value={fCliente} onChange={(e) => setFCliente(e.target.value)}>
+          <Select aria-label="Filtrar por cliente" value={fCliente} onChange={(e) => setFCliente(e.target.value)}>
             <option value="">Todos os clientes</option>
             {clientes.map((c) => (
               <option key={c} value={c}>
@@ -160,7 +160,7 @@ export function DocumentosPage() {
           </Select>
         </div>
         <div className="w-full sm:w-40">
-          <Select value={fTipo} onChange={(e) => setFTipo(e.target.value)}>
+          <Select aria-label="Filtrar por tipo" value={fTipo} onChange={(e) => setFTipo(e.target.value)}>
             <option value="">Todos os tipos</option>
             {Object.entries(TIPO_MODELO_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
@@ -170,7 +170,7 @@ export function DocumentosPage() {
           </Select>
         </div>
         <div className="w-full sm:w-48">
-          <Select value={dropdownSit} onChange={(e) => setFSit(e.target.value as FiltroSit)}>
+          <Select aria-label="Filtrar por situação" value={dropdownSit} onChange={(e) => setFSit(e.target.value as FiltroSit)}>
             <option value="">Todas as situações</option>
             {Object.entries(SITUACAO_DOC_LABEL).map(([k, v]) => (
               <option key={k} value={k}>
