@@ -1,17 +1,18 @@
 import { test, expect } from "@playwright/test";
 import { readFileSync } from "node:fs";
+import { lerFixtures } from "./fixtures-helper";
 
 // Bloco 6 — Documentos/arquivos PELA INTERFACE: o widget REAL de upload na ficha do cliente
 // (anexar → aparece → baixar → conteúdo confere → remover → some após refresh).
 // Os testes HTTP de segurança (415/413/403/401/isolamento) permanecem em flows-arquivos.
 test.use({ storageState: "e2e/.auth/admin.json" });
 
-const ACME = "cmr3t8hbf000ehy7g762b5dsu"; // cliente do Portal (seed)
 const CONTEUDO = Buffer.from(`%PDF-1.4\nwidget-upload-e2e ${Date.now()}\n%%EOF\n`);
 
 test("upload pela UI: widget real anexa, lista, baixa (conteúdo confere) e remove", async ({ page }) => {
   test.setTimeout(60_000);
-  await page.goto(`/clientes/${ACME}`);
+  const { portalClienteId } = lerFixtures();
+  await page.goto(`/clientes/${portalClienteId}`);
   const nome = `widget-e2e-${Date.now().toString().slice(-6)}.pdf`;
 
   // 1. Anexar pelo widget REAL (input file oculto atrás do botão "Anexar documento")

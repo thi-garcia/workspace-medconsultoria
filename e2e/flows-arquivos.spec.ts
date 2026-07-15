@@ -1,14 +1,15 @@
 import { test, expect } from "@playwright/test";
+import { lerFixtures } from "./fixtures-helper";
 
 // Cenário 3 — Documentos/arquivos: upload/download via HTTP REAL (não só service),
 // validação de tipo/tamanho e isolamento de acesso entre clientes (CLIENTE não baixa de outro).
+// clienteIds vêm da fixture (variam a cada seed).
 const BASE = "http://localhost:4310";
-const CLI_PORTAL = "cmr3t8hbf000ehy7g762b5dsu"; // Acme Saude — dono do login cliente@medconsultoria.com.br
-const CLI_OUTRO = "cmr3sqj3z0005hy7cxogu6nhb"; // Clinica Vida Plena — outro cliente
 
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj<< /Type /Catalog >>endobj\ntrailer<< >>\n%%EOF\n");
 
 test("upload/download HTTP: válido, tipo inválido, tamanho e isolamento entre clientes", async ({ playwright }) => {
+  const { portalClienteId: CLI_PORTAL, outroClienteId: CLI_OUTRO } = lerFixtures();
   const admin = await playwright.request.newContext({ baseURL: BASE, storageState: "e2e/.auth/admin.json" });
   const cliente = await playwright.request.newContext({ baseURL: BASE, storageState: "e2e/.auth/cliente.json" });
 

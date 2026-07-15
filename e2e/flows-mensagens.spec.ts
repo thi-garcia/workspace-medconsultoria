@@ -1,10 +1,10 @@
 import { test, expect, type APIRequestContext } from "@playwright/test";
+import { lerFixtures } from "./fixtures-helper";
 
 // Cenário 7 — Mensagens/suporte: um chamado é ESCOPADO ao clienteId da sessão.
 // O cliente abre e lê o próprio chamado, NÃO lê o de outro cliente, e a infra
 // de tempo real (socket.io) está no ar e responde ao handshake autenticado.
 const BASE = "http://localhost:4310";
-const CONVERSA_ALHEIA = "cmrfbvope0007hykk3i23y6ta"; // chamado de "Hospital Santa Luz" (não é do Acme logado)
 const ASSUNTO = `Chamado E2E ${Date.now().toString().slice(-6)}`;
 
 function jsonBody(input: unknown) {
@@ -18,6 +18,7 @@ async function dataJson(res: { json: () => Promise<unknown> }) {
 }
 
 test("chamado do cliente é isolado por sessão + realtime no ar", async ({ playwright }) => {
+  const { outroConversaId: CONVERSA_ALHEIA } = lerFixtures();
   const cliente: APIRequestContext = await playwright.request.newContext({ baseURL: BASE, storageState: "e2e/.auth/cliente.json" });
 
   // 1. Abre um chamado próprio → conversaId

@@ -60,6 +60,31 @@ async function seedBriefing() {
   return REQ_ID;
 }
 
+// Dados dinâmicos p/ os testes (ids/nomes variam a cada seed — NUNCA hardcodar).
+async function seedIsolamento() {
+  const portal = await prisma.user.findFirst({
+    where: { email: PORTAL_EMAIL },
+    select: { clienteId: true, cliente: { select: { nome: true } } },
+  });
+  if (!portal?.clienteId) throw new Error("Cliente do Portal não encontrado.");
+  const portalClienteId = portal.clienteId;
+  const portalClienteNome = portal.cliente?.nome ?? "";
+  const outro = await prisma.cliente.findFirst({ where: { id: { not: portalClienteId }, deletedAt: null }, select: { id: true } });
+  if (!outro) throw new Error("Nenhum OUTRO cliente para testes de isolamento.");
+  const outroClienteId = outro.id;
+  const ator = await prisma.user.findFirst({ where: { role: { in: ["ROOT", "ADMIN"] }, ativo: true }, select: { id: true } });
+
+  // Documento e chamado do OUTRO cliente (isolamento) — idempotentes.
+  const DOC_ID = "e2edocalheio000000000000";
+  const CONV_ID = "e2econvalheio00000000000";
+  await prisma.documento.deleteMany({ where: { id: DOC_ID } });
+  await prisma.documento.create({ data: { id: DOC_ID, clienteId: outroClienteId, titulo: "Documento E2E (alheio)", conteudo: "conteudo", status: "ENVIADO", criadoPorId: ator?.id ?? null } });
+  await prisma.conversa.deleteMany({ where: { id: CONV_ID } });
+  await prisma.conversa.create({ data: { id: CONV_ID, tipo: "CLIENTE", clienteId: outroClienteId, assunto: "Chamado E2E (alheio)", status: "ABERTO" } });
+
+  return { portalClienteId, portalClienteNome, outroClienteId, outroDocId: DOC_ID, outroConversaId: CONV_ID };
+}
+
 async function seedReset() {
   const user = await prisma.user.upsert({
     where: { email: RESET_EMAIL },
@@ -76,11 +101,15 @@ async function seedReset() {
 
 async function main() {
   const briefingReqId = await seedBriefing();
+  const iso = await seedIsolamento();
   const reset = await seedReset();
   mkdirSync("e2e/.auth", { recursive: true });
-  writeFileSync("e2e/.auth/fixtures.json", JSON.stringify({ briefingReqId, resetRawValid: reset.rawValid, resetRawExpired: reset.rawExpired }, null, 2));
+  writeFileSync(
+    "e2e/.auth/fixtures.json",
+    JSON.stringify({ briefingReqId, ...iso, resetRawValid: reset.rawValid, resetRawExpired: reset.rawExpired }, null, 2),
+  );
   await prisma.$disconnect();
-  console.log("✓ fixtures E2E semeadas (briefing + reset) → e2e/.auth/fixtures.json");
+  console.log("✓ fixtures E2E semeadas (briefing + isolamento + reset) → e2e/.auth/fixtures.json");
 }
 
 main().catch(async (e) => {

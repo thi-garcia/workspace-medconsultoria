@@ -8,8 +8,11 @@ const RUN = `PJ${Date.now().toString().slice(-6)}`;
 const CARD = `Cartão ${RUN}`;
 
 async function abrirProjeto(page: Page) {
-  await page.goto("/projetos");
-  await page.getByRole("button", { name: /Implantacao Sistema/ }).click();
+  // Abre o PRIMEIRO projeto do seed (id dinâmico via API — sem hardcodar nome/id).
+  const res = await page.request.get("/trpc/projetos.list");
+  const projetos = (await res.json()).result.data.json as { id: string }[];
+  expect(projetos.length, "seed deve ter ao menos um projeto").toBeGreaterThan(0);
+  await page.goto(`/projetos/${projetos[0].id}`);
   await expect(page.getByRole("button", { name: "Novo cartão" })).toBeVisible();
 }
 
