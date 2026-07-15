@@ -28,6 +28,72 @@ test.describe.serial("Cenário 8 — financeiro (ADMIN)", () => {
     await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
     await expect(page.getByText(`${RUN} pagar`)).toBeVisible();
   });
+
+  test("CRUD via UI: editar+persistir, marcar paga, filtrar e excluir", async ({ page }) => {
+    const desc = `${RUN} crud`;
+    await criarConta(page, "A pagar", desc, "R$ 150,00");
+
+    await page.goto("/financeiro");
+    await page.getByRole("button", { name: "Tudo" }).click();
+    await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
+    await expect(page.getByRole("row").filter({ hasText: desc })).toBeVisible();
+
+    // Editar valor → 250,00 e confirmar persistência após refresh
+    await page.getByRole("row").filter({ hasText: desc }).getByTitle("Editar").click();
+    const d = page.getByRole("dialog", { name: "Editar conta" });
+    await d.getByLabel("Valor *").fill("R$ 250,00");
+    await d.getByRole("button", { name: /Salvar|Atualizar/ }).click();
+    await expect(d).toHaveCount(0);
+    await page.reload();
+    await page.getByRole("button", { name: "Tudo" }).click();
+    await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
+    await expect(page.getByRole("row").filter({ hasText: desc })).toContainText("250,00");
+
+    // Marcar como paga → aparece em "Pagas", some de "Pendentes"
+    await page.getByRole("row").filter({ hasText: desc }).getByTitle("Marcar como paga").click();
+    await page.getByRole("button", { name: "Pagas", exact: true }).click();
+    await expect(page.getByRole("row").filter({ hasText: desc })).toBeVisible();
+    await page.getByRole("button", { name: "Pendentes", exact: true }).click();
+    await expect(page.getByRole("row").filter({ hasText: desc })).toHaveCount(0);
+
+    // Excluir (via "Todas") e confirmar remoção após refresh
+    await page.getByRole("button", { name: "Todas", exact: true }).click();
+    await page.getByRole("row").filter({ hasText: desc }).getByTitle("Remover").click();
+    await page.getByRole("dialog").filter({ hasText: "Remover conta" }).getByRole("button", { name: "Remover" }).click();
+    await page.reload();
+    await page.getByRole("button", { name: "Tudo" }).click();
+    await page.getByRole("button", { name: "Todas", exact: true }).click();
+    await expect(page.getByText(desc)).toHaveCount(0);
+  });
+
+  test("carteira Pessoal: conta pessoal aparece só na carteira Pessoal", async ({ page }) => {
+    const desc = `${RUN} pessoal`;
+    await page.goto("/financeiro");
+    await page.getByRole("button", { name: "Nova conta" }).click();
+    const d = page.getByRole("dialog", { name: "Nova conta" });
+    await d.getByRole("button", { name: "Pessoal", exact: true }).click();
+    await d.getByLabel("Tipo").selectOption("A pagar");
+    await d.getByLabel("Valor *").fill("R$ 90,00");
+    await d.getByLabel("Descrição *").fill(desc);
+    await d.getByLabel("Vencimento *").fill("2026-07-28");
+    await d.getByRole("button", { name: "Criar conta" }).click();
+    await expect(d).toHaveCount(0);
+
+    // Aparece na carteira Pessoal
+    await page.getByRole("button", { name: "Pessoal", exact: true }).click();
+    await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
+    await expect(page.getByText(desc)).toBeVisible();
+    // NÃO aparece na carteira Empresa (isolamento por carteira)
+    await page.getByRole("button", { name: "Empresa", exact: true }).click();
+    await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
+    await expect(page.getByText(desc)).toHaveCount(0);
+
+    // Limpeza
+    await page.getByRole("button", { name: "Pessoal", exact: true }).click();
+    await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
+    await page.getByRole("row").filter({ hasText: desc }).getByTitle("Remover").click();
+    await page.getByRole("dialog").filter({ hasText: "Remover conta" }).getByRole("button", { name: "Remover" }).click();
+  });
 });
 
 test.describe("Cenário 8 — RBAC do Financeiro", () => {
