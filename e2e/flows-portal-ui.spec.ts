@@ -13,15 +13,18 @@ function campo(d: Locator, rotulo: string): Locator {
 test.describe.serial("Bloco 5 — Portal (UI)", () => {
   test("briefing: cliente preenche todos os tipos pela UI, envia e persiste", async ({ page }) => {
     await page.goto("/");
-    await page.getByRole("button", { name: "Preencher na tela" }).first().click();
+    // O briefing pode já ter resposta (outro spec HTTP usa o mesmo requisito) → aceita ambos os rótulos.
+    await page.getByRole("button", { name: /Preencher na tela|Revisar resposta/ }).first().click();
     const d = page.getByRole("dialog");
     await expect(d.getByText("Briefing E2E")).toBeVisible();
 
+    // .fill/.check são IDEMPOTENTES (robusto a valores pré-existentes); nada de toggle por .click().
     await campo(d, "Curto").locator("input").fill("Resposta curta UI");
     await campo(d, "Longo").locator("textarea").fill("Linha 1 UI\nLinha 2 UI");
-    await campo(d, "Escolha").getByText("A", { exact: true }).click();
-    await campo(d, "Multipla").getByText("X", { exact: true }).click();
-    await campo(d, "Multipla").getByText("Z", { exact: true }).click();
+    await campo(d, "Escolha").getByRole("radio").first().check(); // opção "A"
+    await campo(d, "Multipla").getByRole("checkbox").nth(0).check(); // X
+    await campo(d, "Multipla").getByRole("checkbox").nth(1).uncheck(); // Y desmarcado
+    await campo(d, "Multipla").getByRole("checkbox").nth(2).check(); // Z
     await campo(d, "Numero").locator("input").fill("42");
     await campo(d, "SimNao").getByRole("button", { name: "Sim" }).click();
     await campo(d, "Data").locator("input").fill("2026-07-20");
