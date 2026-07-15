@@ -158,10 +158,10 @@ importers:
         version: 1.170.17(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@trpc/client':
         specifier: ^11.0.0
-        version: 11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3)
+        version: 11.18.0(@trpc/server@11.0.0(typescript@5.9.3))(typescript@5.9.3)
       '@trpc/react-query':
         specifier: ^11.0.0
-        version: 11.18.0(@tanstack/react-query@5.101.2(react@18.3.1))(@trpc/client@11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.18.0(typescript@5.9.3))(react@18.3.1)(typescript@5.9.3)
+        version: 11.18.0(@tanstack/react-query@5.101.2(react@18.3.1))(@trpc/client@11.18.0(@trpc/server@11.0.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.0.0(typescript@5.9.3))(react@18.3.1)(typescript@5.9.3)
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -199,6 +199,9 @@ importers:
       '@app/api':
         specifier: workspace:*
         version: link:../api
+      '@trpc/server':
+        specifier: 11.0.0
+        version: 11.0.0(typescript@5.9.3)
       '@types/dompurify':
         specifier: 3.0.5
         version: 3.0.5
@@ -210,7 +213,7 @@ importers:
         version: 18.3.7(@types/react@18.3.31)
       '@vitejs/plugin-react':
         specifier: ^4.3.4
-        version: 4.7.0(vite@6.4.3(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.5))
+        version: 4.7.0(vite@6.4.3(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.22.5))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.5.2(postcss@8.5.16)
@@ -231,7 +234,7 @@ importers:
         version: 5.9.3
       vite:
         specifier: ^6.0.5
-        version: 6.4.3(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.5)
+        version: 6.4.3(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.22.5)
       vitest:
         specifier: 2.1.8
         version: 2.1.8(@types/node@22.20.0)(jsdom@25.0.1)
@@ -1666,6 +1669,11 @@ packages:
       '@trpc/client': 11.18.0
       '@trpc/server': 11.18.0
       react: '>=18.2.0'
+      typescript: '>=5.7.2'
+
+  '@trpc/server@11.0.0':
+    resolution: {integrity: sha512-xY9q/b/wR/tWGYTm5xmRjivkYD2EZZXmOKmHuNJRYZuLbieeNUsdfQRjJC409WB1pjKWInomhHwuA8bahZJ4lQ==}
+    peerDependencies:
       typescript: '>=5.7.2'
 
   '@trpc/server@11.18.0':
@@ -4651,17 +4659,21 @@ snapshots:
 
   '@tanstack/store@0.9.3': {}
 
-  '@trpc/client@11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3)':
+  '@trpc/client@11.18.0(@trpc/server@11.0.0(typescript@5.9.3))(typescript@5.9.3)':
     dependencies:
-      '@trpc/server': 11.18.0(typescript@5.9.3)
+      '@trpc/server': 11.0.0(typescript@5.9.3)
       typescript: 5.9.3
 
-  '@trpc/react-query@11.18.0(@tanstack/react-query@5.101.2(react@18.3.1))(@trpc/client@11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.18.0(typescript@5.9.3))(react@18.3.1)(typescript@5.9.3)':
+  '@trpc/react-query@11.18.0(@tanstack/react-query@5.101.2(react@18.3.1))(@trpc/client@11.18.0(@trpc/server@11.0.0(typescript@5.9.3))(typescript@5.9.3))(@trpc/server@11.0.0(typescript@5.9.3))(react@18.3.1)(typescript@5.9.3)':
     dependencies:
       '@tanstack/react-query': 5.101.2(react@18.3.1)
-      '@trpc/client': 11.18.0(@trpc/server@11.18.0(typescript@5.9.3))(typescript@5.9.3)
-      '@trpc/server': 11.18.0(typescript@5.9.3)
+      '@trpc/client': 11.18.0(@trpc/server@11.0.0(typescript@5.9.3))(typescript@5.9.3)
+      '@trpc/server': 11.0.0(typescript@5.9.3)
       react: 18.3.1
+      typescript: 5.9.3
+
+  '@trpc/server@11.0.0(typescript@5.9.3)':
+    dependencies:
       typescript: 5.9.3
 
   '@trpc/server@11.18.0(typescript@5.9.3)':
@@ -4837,7 +4849,7 @@ snapshots:
       '@typescript-eslint/types': 8.19.0
       eslint-visitor-keys: 4.2.1
 
-  '@vitejs/plugin-react@4.7.0(vite@6.4.3(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.5))':
+  '@vitejs/plugin-react@4.7.0(vite@6.4.3(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.22.5))':
     dependencies:
       '@babel/core': 7.29.7
       '@babel/plugin-transform-react-jsx-self': 7.29.7(@babel/core@7.29.7)
@@ -4845,7 +4857,7 @@ snapshots:
       '@rolldown/pluginutils': 1.0.0-beta.27
       '@types/babel__core': 7.20.5
       react-refresh: 0.17.0
-      vite: 6.4.3(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.5)
+      vite: 6.4.3(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.22.5)
     transitivePeerDependencies:
       - supports-color
 
@@ -6585,7 +6597,7 @@ snapshots:
       '@types/node': 22.20.0
       fsevents: 2.3.3
 
-  vite@6.4.3(@types/node@22.20.0)(jiti@2.7.0)(tsx@4.22.5):
+  vite@6.4.3(@types/node@22.20.0)(jiti@1.21.7)(tsx@4.22.5):
     dependencies:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.4)
@@ -6596,7 +6608,7 @@ snapshots:
     optionalDependencies:
       '@types/node': 22.20.0
       fsevents: 2.3.3
-      jiti: 2.7.0
+      jiti: 1.21.7
       tsx: 4.22.5
 
   vitest@2.1.8(@types/node@22.20.0)(jsdom@25.0.1):

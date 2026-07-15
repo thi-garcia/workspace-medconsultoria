@@ -6,9 +6,11 @@ import { readFileSync } from "node:fs";
 // e-mail inexistente responde ok:true (sem enumeração de usuário).
 // Os RAW dos tokens (hash SHA-256 no banco) vêm da fixture determinística semeada no setup.
 const BASE = "http://localhost:4310";
-const FIX = JSON.parse(readFileSync("e2e/.auth/fixtures.json", "utf8")) as { resetRawValid: string; resetRawExpired: string };
-const RAW_VALID = FIX.resetRawValid;
-const RAW_EXPIRED = FIX.resetRawExpired;
+// Lido DENTRO do teste (não no escopo do módulo): o arquivo só existe após a setup semear as
+// fixtures. Ler no topo quebrava a COLETA do Playwright em ambiente limpo (ENOENT).
+function lerFixtures() {
+  return JSON.parse(readFileSync("e2e/.auth/fixtures.json", "utf8")) as { resetRawValid: string; resetRawExpired: string };
+}
 
 function jsonBody(input: unknown) {
   return { data: { json: input }, headers: { "content-type": "application/json" } };
@@ -21,6 +23,7 @@ async function dataJson(res: { json: () => Promise<unknown> }) {
 }
 
 test("reset de senha: uso único, expiração e sem enumeração — via HTTP", async ({ playwright }) => {
+  const { resetRawValid: RAW_VALID, resetRawExpired: RAW_EXPIRED } = lerFixtures();
   const req: APIRequestContext = await playwright.request.newContext({ baseURL: BASE });
 
   // validarReset com token válido → { valido: true }

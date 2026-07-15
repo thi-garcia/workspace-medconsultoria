@@ -1,10 +1,10 @@
 /**
- * Fixtures DETERMINÍSTICAS para a suíte E2E (roda antes dos specs, via tsx).
- * Semeia, de forma idempotente e portável (lookup do cliente por e-mail, não por id fixo):
+ * Fixtures DETERMINÍSTICAS para a suíte E2E (roda antes dos specs, com `node` — SEM tsx, para
+ * funcionar na CI apenas com `pnpm install --frozen-lockfile`). Idempotente e portável
+ * (lookup do cliente por e-mail, não por id fixo):
  *   1) Briefing (ServicoRequisito BRIEFING + Formulario com 1 campo por tipo) ligado ao cliente do Portal;
  *   2) Reset de senha (usuário descartável + tokens RESET válido/expirado), escrevendo os RAW em
  *      e2e/.auth/fixtures.json para o spec (o banco só guarda o hash sha256).
- * Sem estado manual, sem depender de execução anterior: cada run gera tokens novos (uso único).
  */
 import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 import { randomBytes, createHash } from "node:crypto";
@@ -24,7 +24,7 @@ const FORM_ID = "e2eformbrief0000000000000";
 const SVC_ID = "e2esvcbrief00000000000000";
 const CS_ID = "e2ecsbrief000000000000000";
 const RESET_EMAIL = "e2e-reset-fixture@example.test";
-const hashToken = (raw: string) => createHash("sha256").update(raw).digest("hex");
+const hashToken = (raw) => createHash("sha256").update(raw).digest("hex");
 
 async function seedBriefing() {
   const portal = await prisma.user.findFirst({ where: { email: PORTAL_EMAIL }, select: { clienteId: true } });

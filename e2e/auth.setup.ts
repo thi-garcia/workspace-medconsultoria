@@ -29,5 +29,6 @@ for (const [role, email] of Object.entries(USERS)) {
 // Fixtures determinísticas (briefing + tokens de reset) — sem elas os specs correspondentes
 // não têm o que exercitar. Idempotente e com lookup dinâmico do cliente (portável p/ CI).
 setup("seed fixtures", async () => {
-  execSync("pnpm exec tsx scripts/e2e-fixtures.ts", { stdio: "inherit" });
+  // `node` (não `tsx`): funciona só com `pnpm install --frozen-lockfile`, sem ferramenta extra.
+  execSync("node scripts/e2e-fixtures.mjs", { stdio: "inherit" });
 });
