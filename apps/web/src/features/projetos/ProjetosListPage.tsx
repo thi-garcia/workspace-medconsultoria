@@ -237,7 +237,7 @@ export function ProjetosListPage() {
                   status === f.v ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
-                {f.label} <span className="tabular-nums opacity-70">{n}</span>
+                {f.label} <span className="tabular-nums">{n}</span>
               </button>
             );
           })}

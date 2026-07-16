@@ -68,4 +68,47 @@ for (const vp of VIEWPORTS) {
     await painel.getByRole("button", { name: "Remover", exact: true }).click();
     await page.getByRole("dialog").filter({ hasText: /Remover|Excluir/ }).getByRole("button", { name: /Remover|Excluir/ }).click();
   });
+
+  // Fluxo operacional em mobile: projeto → abrir cartão (modal cabe) → checklist → comentário → limpeza.
+  test(`projeto: cartão + checklist concluídos na interface — ${vp.nome}`, async ({ page }) => {
+    test.setTimeout(60_000);
+    await page.setViewportSize({ width: vp.w, height: vp.h });
+    const RUN = `CRD${vp.w}${Date.now().toString().slice(-4)}`;
+    const CARD = `Cartão ${RUN}`;
+
+    // Abre o primeiro projeto do seed (id dinâmico via API — sem hardcodar)
+    const res = await page.request.get("/trpc/projetos.list");
+    const projetos = (await res.json()).result.data.json as { id: string }[];
+    expect(projetos.length, "seed deve ter ao menos um projeto").toBeGreaterThan(0);
+    await page.goto(`/projetos/${projetos[0].id}`);
+    await semOverflow(page);
+
+    // Cria cartão
+    await page.getByRole("button", { name: "Novo cartão" }).click();
+    const nc = page.getByRole("dialog");
+    const box = await nc.boundingBox();
+    expect(box!.width, "modal do cartão cabe na largura").toBeLessThanOrEqual(vp.w);
+    await nc.locator('input[name="titulo"]').fill(CARD);
+    await nc.getByRole("button", { name: "Criar cartão" }).click();
+    await expect(nc).toHaveCount(0);
+
+    // Abre o painel do cartão (modal cabe) e conclui checklist + comentário
+    await page.getByRole("button", { name: new RegExp(CARD) }).click();
+    const panel = page.getByRole("dialog");
+    await expect(panel.getByRole("heading", { name: CARD })).toBeVisible();
+    await semOverflow(page);
+    await panel.getByPlaceholder("Novo item…").fill(`Item ${RUN}`);
+    await panel.getByPlaceholder("Novo item…").press("Enter");
+    await expect(panel.getByText(`Item ${RUN}`)).toBeVisible();
+    await panel.getByRole("checkbox").first().click();
+    await expect(panel.getByRole("checkbox").first()).toBeChecked();
+    await panel.getByPlaceholder("Escreva um comentário…").fill(`Coment ${RUN}`);
+    await panel.getByRole("button", { name: "Comentar" }).click();
+    await expect(panel.getByText(`Coment ${RUN}`)).toBeVisible();
+
+    // Limpeza: remove o cartão
+    await panel.locator('button[title="Remover"]').first().click();
+    await page.getByRole("dialog").filter({ hasText: "Remover cartão" }).getByRole("button", { name: "Remover" }).click();
+    await expect(page.getByRole("button", { name: new RegExp(CARD) })).toHaveCount(0);
+  });
 }

@@ -221,7 +221,7 @@ export function MensagensPage() {
             {TABS.map((f) => (
               <button key={f} onClick={() => setFiltro(f)} className={cn("rounded-full px-2.5 py-1 text-xs font-medium transition-colors", filtro === f ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-accent")}>
                 {tabLabel(f)}
-                {contagens[f] > 0 && <span className="ml-1 opacity-70">{contagens[f]}</span>}
+                {contagens[f] > 0 && <span className="ml-1 tabular-nums">{contagens[f]}</span>}
               </button>
             ))}
           </div>
@@ -231,7 +231,7 @@ export function MensagensPage() {
               <MessageSquare className="h-3.5 w-3.5" /> Ativas
             </button>
             <button onClick={() => setVerResolvidos(true)} className={cn("flex flex-1 items-center justify-center gap-1 rounded-md px-2 py-1 font-medium transition-colors", verResolvidos ? "bg-card text-success shadow-sm" : "text-muted-foreground hover:text-foreground")} title="Chamados resolvidos">
-              <CheckCircle2 className="h-3.5 w-3.5" /> Histórico{resolvidosCount > 0 && <span className="opacity-70">{resolvidosCount}</span>}
+              <CheckCircle2 className="h-3.5 w-3.5" /> Histórico{resolvidosCount > 0 && <span className="tabular-nums">{resolvidosCount}</span>}
             </button>
           </div>
         </div>

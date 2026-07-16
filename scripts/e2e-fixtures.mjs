@@ -82,6 +82,27 @@ async function seedIsolamento() {
   await prisma.conversa.deleteMany({ where: { id: CONV_ID } });
   await prisma.conversa.create({ data: { id: CONV_ID, tipo: "CLIENTE", clienteId: outroClienteId, assunto: "Chamado E2E (alheio)", status: "ABERTO" } });
 
+  // Briefing ENVIADO no OUTRO cliente, p/ a visão da EQUIPE (Bloco 7 — "Ver respostas" na ficha).
+  // Fica no outro cliente (não no do Portal) para o teste da equipe não colidir com o cancelamento
+  // de serviços feito pelo teste do Portal. Reusa o serviço/briefing/campos semeados em seedBriefing.
+  await prisma.formularioResposta.deleteMany({ where: { clienteId: outroClienteId, requisitoId: REQ_ID } });
+  await prisma.clienteServico.upsert({
+    where: { clienteId_servicoId: { clienteId: outroClienteId, servicoId: SVC_ID } },
+    update: { status: "ATIVO" },
+    create: { clienteId: outroClienteId, servicoId: SVC_ID, status: "ATIVO" },
+  });
+  await prisma.formularioResposta.create({
+    data: {
+      formularioId: FORM_ID,
+      clienteId: outroClienteId,
+      requisitoId: REQ_ID,
+      servicoId: SVC_ID,
+      status: "ENVIADO",
+      enviadoEm: new Date(),
+      respostas: JSON.stringify({ e2ec0: "Resposta curta FUNC", e2ec1: "Linha A\nLinha B", e2ec2: "A", e2ec3: ["X", "Z"], e2ec4: "42", e2ec5: "Sim", e2ec6: "2026-07-20" }),
+    },
+  });
+
   return { portalClienteId, portalClienteNome, outroClienteId, outroDocId: DOC_ID, outroConversaId: CONV_ID };
 }
 
