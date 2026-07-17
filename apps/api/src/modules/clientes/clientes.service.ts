@@ -310,6 +310,53 @@ export async function removeCliente(id: string, userId: string) {
   return { ok: true };
 }
 
+/**
+ * Exclusão DEFINITIVA (física) — só ROOT. Prioriza a segurança: se houver qualquer
+ * vínculo que torne a remoção insegura (projetos, documentos, financeiro, serviços,
+ * agenda, acessos ao Portal, arquivos, conversas, leads, respostas), BLOQUEIA e orienta
+ * a arquivar. Preserva histórico/financeiro/documentos. Só apaga um cliente "limpo".
+ */
+export async function excluirDefinitivoCliente(id: string, userId: string) {
+  const cliente = await prisma.cliente.findUnique({ where: { id }, select: { id: true, nome: true } });
+  if (!cliente) throw new TRPCError({ code: "NOT_FOUND", message: "Cliente não encontrado" });
+
+  const [projetos, documentos, contas, servicos, eventos, acessos, arquivosCli, conversas, respostas, leads] = await Promise.all([
+    prisma.projeto.count({ where: { clienteId: id } }),
+    prisma.documento.count({ where: { clienteId: id } }),
+    prisma.conta.count({ where: { clienteId: id } }),
+    prisma.clienteServico.count({ where: { clienteId: id } }),
+    prisma.evento.count({ where: { clienteId: id } }),
+    prisma.user.count({ where: { clienteId: id } }),
+    prisma.arquivo.count({ where: { clienteId: id } }),
+    prisma.conversa.count({ where: { clienteId: id } }),
+    prisma.formularioResposta.count({ where: { clienteId: id } }),
+    prisma.lead.count({ where: { OR: [{ clienteId: id }, { convertidoEmClienteId: id }] } }),
+  ]);
+
+  const vinculos: Record<string, number> = {
+    projetos, documentos, financeiro: contas, serviços: servicos, agenda: eventos,
+    "acessos ao Portal": acessos, arquivos: arquivosCli, conversas, "respostas de formulário": respostas, leads,
+  };
+  const bloqueios = Object.entries(vinculos).filter(([, n]) => n > 0);
+  if (bloqueios.length) {
+    const detalhe = bloqueios.map(([k, n]) => `${k}: ${n}`).join(", ");
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message: `Exclusão definitiva bloqueada — o cliente tem vínculos (${detalhe}). Arquive o cliente para preservar o histórico.`,
+    });
+  }
+
+  // Cliente sem vínculos → seguro remover fisicamente (só os contatos, que são dados dele).
+  await prisma.$transaction([
+    prisma.contato.deleteMany({ where: { clienteId: id } }),
+    prisma.cliente.delete({ where: { id } }),
+  ]);
+  await prisma.activityLog.create({
+    data: { userId, acao: "cliente.excluido_definitivo", entidadeTipo: "cliente", entidadeId: id },
+  });
+  return { ok: true };
+}
+
 export function addContato(input: CreateContatoInput) {
   return prisma.contato.create({
     data: {

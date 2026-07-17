@@ -220,20 +220,21 @@ Varredura de `apps/web/src` (interno + Portal + auth/públicas) por lorem ipsum,
 ### 7.1 Correções automáticas (farei sem pedir; sem inventar conteúdo real)
 Erros de português · inconsistências de nomenclatura · textos técnicos inadequados expostos ao usuário · mensagens de erro pouco claras · problemas objetivos de UX (ex.: o Salvar/Cancelar do §2.1). _Itens concretos serão listados aqui à medida que a validação por tela (§5) os encontrar._
 
-### 7.2 Conteúdo real que o dono/Thaís precisam fornecer
-Estes **não posso inventar** — dependem de informação real da MedConsultoria:
+## 7.2 Conteúdo real necessário
 
-1. **Identidade institucional para documentos/e-mails/rodapés:** razão social, CNPJ, endereço, telefone(s) oficiais, e-mail de contato público, site — usados em contratos, propostas, recibos e assinatura de e-mails.
-2. **Remetente de e-mail oficial** (`SMTP_FROM`) e caixa monitorada para respostas (hoje o `.env` real já foi por você; confirmar o texto de assinatura padrão dos e-mails).
-3. **Catálogo de serviços REAL e definitivo** (nomes, descrições, preços de referência, recorrência, cláusulas de contrato por serviço) — hoje há 12 serviços no banco de dev (mistura de real + teste). Precisa da lista "oficial" da Med.
-4. **Modelos de documento oficiais** (texto final de Contrato, Proposta, Escopo, Recibo, Onboarding, etc.) — os 19 modelos atuais precisam de revisão de conteúdo por você/Thaís.
-5. **Operadoras/convênios reais** para o catálogo de credenciamento (se aplicável ao negócio).
-6. **Estágios do funil de vendas definitivos** (nomes/cores) — hoje vêm do demo-seed (Novo/Qualificação/Proposta/Negociação/Fechado). Confirmar se são os oficiais.
-7. **Textos institucionais de páginas públicas:** mensagem da página de **captura de lead** (`/captura`) e textos de aceite/assinatura, se quiser personalizar.
-8. **Categorias financeiras** padrão (se quiser um conjunto inicial).
-9. **Usuários reais da equipe** (nome, e-mail, papel) para os primeiros acessos — em vez da equipe demo.
+> **Nada aqui pode ser inventado** — depende de informação real da MedConsultoria, fornecida por você/Thaís. Enquanto não vier, seguem os dados **demo isolados** (não substituídos, fixtures preservadas). Lista expandida à medida que a validação (§5) revela campos que exibem dados reais.
 
-> Vou consolidar/expandir esta lista conforme a validação por tela (§5) revelar campos que exibem dados que precisam ser reais.
+- **Identidade institucional:** razão social, CNPJ, endereço, telefone(s) oficiais, e-mail público de contato, site, logotipo definitivo — usados em contratos/propostas/recibos/rodapés e assinatura de e-mails.
+- **Equipe e usuários:** nome, e-mail e papel de cada pessoa real da equipe (substitui a equipe demo Thaís/Funcionário Exemplo). Quem é ROOT/ADMIN/FUNCIONARIO.
+- **Serviços e subserviços:** catálogo oficial (nomes, descrições, preços de referência, recorrência, cláusulas de contrato por serviço). Hoje há 12 no dev (real + teste misturados).
+- **Operadoras:** lista real de operadoras/convênios para o credenciamento.
+- **Hospitais:** se o negócio credencia junto a hospitais, a lista oficial (hoje **não há** catálogo de hospitais no sistema — confirmar se é necessário criar).
+- **Categorias e origens:** categorias financeiras padrão (Empresa/Pessoal) e origens de lead reais (canais de aquisição da Med).
+- **Modelos de documentos:** texto final oficial de Contrato, Proposta, Escopo, Recibo, Onboarding, Ata, Pauta, etc. (19 modelos atuais precisam de revisão de conteúdo).
+- **Modelos de e-mails / Mensagens automáticas:** revisão dos textos dos e-mails transacionais e avisos (assunto/corpo/assinatura), e confirmação do remetente/assinatura padrão.
+- **Formulários e briefings:** perguntas oficiais dos briefings por serviço (hoje há exemplos de teste).
+- **Informações jurídicas e de privacidade:** texto de LGPD/privacidade, cláusulas jurídicas padrão, política de tratamento de dados, termos de aceite — para Portal, contratos e páginas públicas.
+- **Estágios do funil:** confirmar nomes/cores oficiais (hoje: Novo/Qualificação/Proposta/Negociação/Fechado, vindos do demo-seed).
 
 ---
 
@@ -285,9 +286,18 @@ Confirmar com o dono: `clientes.remove`/`removerArquivo` e `documentos.modelos.r
 | 1c | P2 padronizar rótulo fechar-sem-salvar | ✅ resolvido no 1a (único ofensor real era Serviços; "Concluído" restante é auto-save, correto) |
 | 2 | **Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras)** | ✅ **APROVADO** (PR #7) |
 | 3 | Validação funcional ao vivo (perfil × viewport) | 🟨 EM ANDAMENTO |
-| 4 | Decisões de RBAC | ⛔ aguarda aval do dono |
+| 4 | **RBAC de exclusão/administração (clientes/arquivos/modelos/operadoras)** | ✅ **APROVADO** (PR #9, backend + 11 testes) |
 | 5 | Estratégia de dados / banco limpo | ⬜ plano a apresentar |
-| 6 | Conteúdo | ⛔ aguarda insumos do dono/Thaís |
+| 6 | Conteúdo real | 🟨 seção §7.2 mantida e estruturada; aguarda insumos do dono/Thaís |
+
+### Bloco 4 — regras de RBAC aplicadas (decisões do dono, 2026-07-17)
+Implementado **no backend** (não só escondendo botões) + testes `apps/api/src/test/rbac-permissoes.integration.test.ts` (11):
+- **Clientes:** arquivar (soft-delete lógico) e desativar = **ADMIN+**; **excluir definitivo** (físico) = **ROOT**, e **bloqueado se houver vínculos** (projetos/documentos/financeiro/serviços/agenda/acessos/arquivos/conversas/respostas/leads) → preserva histórico. FUNCIONARIO não arquiva/desativa/exclui.
+- **Arquivos:** remover = **ADMIN+** (soft-delete + `activityLog` de quem removeu e quando); FUNCIONARIO envia/atualiza, não exclui.
+- **Modelos:** administrar (criar/editar/remover) = **ADMIN+**; FUNCIONARIO usa (list/get).
+- **Operadoras:** administrar = **ADMIN+**; FUNCIONARIO consulta (list).
+- **Frontend alinhado:** botões Arquivar/Desativar (ficha) e Excluir-arquivo (ficha + cards) ocultos para FUNCIONARIO; rótulo "Remover cliente" → "Arquivar" (texto honesto: preserva histórico).
+- Testes cobrem: acesso permitido, acesso negado, **tentativa direta pela API** (`createCaller`), preservação de dados vinculados e comportamento de arquivamento/inativação.
 
 ### Bloco 3 — validação ao vivo (em andamento)
 Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport, além da suíte E2E (62+ testes) como espinha dorsal reproduzível. Cada tela → estado + evidência.

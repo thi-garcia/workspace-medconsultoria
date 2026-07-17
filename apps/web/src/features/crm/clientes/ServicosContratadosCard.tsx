@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { Check, Circle, Loader2, Package, Pencil, PenLine, Plus, Trash2, X } from "lucide-react";
+import { hasRoleLevel } from "@app/shared";
+import { useAuth } from "../../../lib/auth-context";
 import { trpc, type RouterOutputs } from "../../../lib/trpc";
 import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
 import { useConfirm, useConfirmar } from "../../../components/ui/confirm-dialog";
@@ -105,6 +107,9 @@ export function ServicosContratadosCard({ clienteId }: { clienteId: string }) {
   const ativar = trpc.clientes.ativarServico.useMutation({ onSuccess: invalidate });
   const cancelar = trpc.clientes.cancelarServico.useMutation({ onSuccess: invalidate });
   const removerArquivo = trpc.clientes.removerArquivo.useMutation({ onSuccess: invalidate });
+  const { user } = useAuth();
+  // Excluir arquivo é ADMIN+ (RBAC). FUNCIONARIO envia/atualiza, mas não exclui.
+  const podeExcluirArquivo = hasRoleLevel(user.role, "ADMIN");
   const [respostaAberta, setRespostaAberta] = useState<string | null>(null);
   const [editandoPreco, setEditandoPreco] = useState<ServicoContratado | null>(null);
 
@@ -267,13 +272,15 @@ export function ServicosContratadosCard({ clienteId }: { clienteId: string }) {
                                     <span className="text-muted-foreground">
                                       · {a.enviadoPorTipo === "CLIENTE" ? "cliente" : "equipe"}
                                     </span>
-                                    <button
-                                      onClick={() => onRemoverArquivo(a.id, a.nome)}
-                                      title="Remover"
-                                      className="text-muted-foreground/60 hover:text-destructive"
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </button>
+                                    {podeExcluirArquivo && (
+                                      <button
+                                        onClick={() => onRemoverArquivo(a.id, a.nome)}
+                                        title="Remover"
+                                        className="text-muted-foreground/60 hover:text-destructive"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </button>
+                                    )}
                                   </li>
                                 ))}
                               </ul>
@@ -313,13 +320,15 @@ export function ServicosContratadosCard({ clienteId }: { clienteId: string }) {
                           <span className="text-muted-foreground">
                             · {a.enviadoPorTipo === "CLIENTE" ? "cliente" : "equipe"}
                           </span>
-                          <button
-                            onClick={() => onRemoverArquivo(a.id, a.nome)}
-                            title="Remover"
-                            className="text-muted-foreground/60 hover:text-destructive"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
+                          {podeExcluirArquivo && (
+                            <button
+                              onClick={() => onRemoverArquivo(a.id, a.nome)}
+                              title="Remover"
+                              className="text-muted-foreground/60 hover:text-destructive"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
                         </li>
                       ))}
                     </ul>

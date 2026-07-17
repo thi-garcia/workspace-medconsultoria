@@ -10,7 +10,7 @@ import {
   atualizarContratacaoClienteSchema,
   hasRoleLevel,
 } from "@app/shared";
-import { router, funcionarioProcedure } from "../../trpc/trpc.js";
+import { router, funcionarioProcedure, adminProcedure, rootProcedure } from "../../trpc/trpc.js";
 import * as service from "./clientes.service.js";
 import * as servicosCliente from "../servicos/servicos-cliente.service.js";
 import * as arquivos from "../arquivos/arquivos.service.js";
@@ -51,8 +51,8 @@ export const clientesRouter = router({
     .input(updateClienteSchema)
     .mutation(({ input }) => service.updateCliente(input)),
 
-  // Ativar/desativar cliente (toggle manual na ficha).
-  setAtivo: funcionarioProcedure
+  // Ativar/desativar cliente (toggle manual na ficha) — só ADMIN+ (RBAC).
+  setAtivo: adminProcedure
     .input(setAtivoClienteSchema)
     .mutation(({ input, ctx }) => service.setAtivoCliente(input.id, input.ativo, ctx.user.id)),
 
@@ -61,9 +61,16 @@ export const clientesRouter = router({
     .input(z.object({ id: z.string() }))
     .mutation(({ input, ctx }) => service.convidarPortalCliente(ctx.user, input.id)),
 
-  remove: funcionarioProcedure
+  // Arquivar cliente (exclusão LÓGICA: some das listas, preserva histórico) — só ADMIN+.
+  remove: adminProcedure
     .input(z.object({ id: z.string() }))
     .mutation(({ input, ctx }) => service.removeCliente(input.id, ctx.user.id)),
+
+  // Exclusão DEFINITIVA (física) — só ROOT e apenas se não houver vínculos que a tornem
+  // insegura (projetos, documentos, financeiro, serviços, agenda, acessos, arquivos…).
+  excluirDefinitivo: rootProcedure
+    .input(z.object({ id: z.string() }))
+    .mutation(({ input, ctx }) => service.excluirDefinitivoCliente(input.id, ctx.user.id)),
 
   addContato: funcionarioProcedure
     .input(createContatoSchema)
@@ -112,7 +119,8 @@ export const clientesRouter = router({
   arquivos: funcionarioProcedure
     .input(z.object({ id: z.string(), servicoId: z.string().optional() }))
     .query(({ input }) => arquivos.listarArquivos(input.id, input.servicoId)),
-  removerArquivo: funcionarioProcedure
+  // Remover arquivo (lixeira/soft-delete) — só ADMIN+ (FUNCIONARIO envia/atualiza, não exclui).
+  removerArquivo: adminProcedure
     .input(z.object({ id: z.string() }))
-    .mutation(({ input }) => arquivos.removerArquivo(input.id)),
+    .mutation(({ input, ctx }) => arquivos.removerArquivo(input.id, undefined, ctx.user.id)),
 });

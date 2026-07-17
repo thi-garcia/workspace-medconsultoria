@@ -26,8 +26,10 @@ import {
   EVENTO_TIPO_LABEL,
   SITUACAO_COMERCIAL_LABEL,
   CHAMADO_STATUS_LABEL,
+  hasRoleLevel,
   type SituacaoComercial,
 } from "@app/shared";
+import { useAuth } from "../../../lib/auth-context";
 import { trpc } from "../../../lib/trpc";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -99,6 +101,10 @@ export function ClienteDetailPage() {
   const [novoDoc, setNovoDoc] = useState(false);
   const [novaNota, setNovaNota] = useState("");
   const [novoContato, setNovoContato] = useState({ nome: "", email: "", telefone: "" });
+
+  const { user } = useAuth();
+  // Arquivar/desativar cliente é ADMIN+ (RBAC, alinhado ao backend). FUNCIONARIO não vê a ação.
+  const podeGerirCliente = hasRoleLevel(user.role, "ADMIN");
 
   const remove = trpc.clientes.remove.useMutation({
     onSuccess: () => {
@@ -193,7 +199,11 @@ export function ClienteDetailPage() {
               <Badge variant={situacaoVar[c.situacaoComercial as SituacaoComercial]}>
                 {SITUACAO_COMERCIAL_LABEL[c.situacaoComercial as SituacaoComercial]}
               </Badge>
-              {podeAtivar ? (
+              {!podeAtivar ? (
+                <Link to="/leads" className="text-xs text-primary hover:underline" title="É um lead no Funil — a situação acompanha o funil">
+                  no funil · ver →
+                </Link>
+              ) : podeGerirCliente ? (
                 <button
                   disabled={setAtivo.isPending}
                   onClick={async () => {
@@ -214,11 +224,7 @@ export function ClienteDetailPage() {
                 >
                   {c.situacaoComercial === "ATIVO" ? "Desativar" : "Ativar"}
                 </button>
-              ) : (
-                <Link to="/leads" className="text-xs text-primary hover:underline" title="É um lead no Funil — a situação acompanha o funil">
-                  no funil · ver →
-                </Link>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
@@ -263,26 +269,28 @@ export function ClienteDetailPage() {
             <Pencil className="h-4 w-4" />
             Editar
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-muted-foreground hover:text-destructive"
-            disabled={remove.isPending}
-            onClick={async () => {
-              if (
-                await confirm({
-                  title: "Remover cliente",
-                  description: `O cliente "${c.nome}" e seus dados de contato serão removidos. Esta ação não pode ser desfeita.`,
-                  confirmText: "Remover",
-                  variant: "destructive",
-                })
-              )
-                remove.mutate({ id: c.id });
-            }}
-          >
-            <Trash2 className="h-4 w-4" />
-            Remover
-          </Button>
+          {podeGerirCliente && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-muted-foreground hover:text-destructive"
+              disabled={remove.isPending}
+              onClick={async () => {
+                if (
+                  await confirm({
+                    title: "Arquivar cliente",
+                    description: `"${c.nome}" sai das listas (arquivado). O histórico, documentos e financeiro são preservados.`,
+                    confirmText: "Arquivar",
+                    variant: "destructive",
+                  })
+                )
+                  remove.mutate({ id: c.id });
+              }}
+            >
+              <Trash2 className="h-4 w-4" />
+              Arquivar
+            </Button>
+          )}
         </div>
       </div>
 
