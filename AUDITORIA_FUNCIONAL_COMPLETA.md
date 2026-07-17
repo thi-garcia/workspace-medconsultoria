@@ -319,7 +319,18 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 *Responsividade (ADMIN/todas) · 360 / 390 / 768 / 1920*
 - **Ficha do cliente:** ⚠️→✅ **BUG-001 encontrado e corrigido** (ver abaixo). Após fix: sem overflow horizontal em 360/390/768. ✅
 
+### Situações-limite validadas ao vivo (2026-07-17)
+- **Charset (emoji 🚑 + acentos + símbolos) + nome de 178 chars:** criar lead → **round-trip idêntico** (DB utf8mb4); após **refresh** persiste; **sem overflow** de layout. ✅
+- **XSS:** nome com `<b>ol</b>` é exibido como **texto literal** (React escapa) — não injeta HTML. ✅
+- **404 de rota** (`/rota-inexistente`): "Página não encontrada" + "Voltar ao início", dentro do shell. ✅
+- **404 de recurso** (`/clientes/idInexistente`): API 404 NOT_FOUND; UI **antes** mostrava erro de conexão (**BUG-002**) → **corrigido** para "Cliente não encontrado". ✅
+- **Token inválido** (`/proposta/{tokenRuim}`): "Link inválido… peça um novo" (público, sem crash). ✅
+- **RBAC por API direta** (FUNCIONARIO): `clientes.remove`/`setAtivo` → **403 FORBIDDEN**. ✅
+
+_Ver histórico completo de bugs em [BUG_TRACKER.md](BUG_TRACKER.md)._
+
 ### Bugs encontrados e corrigidos
+- **BUG-002 — 404 de recurso mostrava "erro de conexão / tentar de novo"** nas 4 páginas de detalhe (Cliente/Projeto/Documento/Modelo). Corrigido com `isNotFoundError` → cai no estado "não encontrado". Regressão `flows-erros-ux.spec.ts`. PR #12.
 - **BUG-001 — overflow horizontal na ficha do cliente no mobile.** O grid `grid gap-6 lg:grid-cols-3` (`ClienteDetailPage`) não tinha `grid-cols-1` no default: no mobile o único track virava `min-content` e esticava para ~696px em viewport de 390 → scroll horizontal. **Corrigido** com `grid-cols-1` (Tailwind = `minmax(0,1fr)`) + `min-w-0` na coluna principal. **Regressão:** `responsive.spec.ts` agora inclui `/clientes/$id` (a ficha) nos 5 viewports. Reproduzido ao vivo (696px pré-fix → 0 pós-fix). PR #10.
 
 **Próximo:** continuar a varredura módulo a módulo (ADMIN/CLIENTE + os demais módulos), repetindo por viewport; incluindo verificar o mesmo anti-padrão de grid nas páginas Configurações/Documento/Modelo quando percorridas.
