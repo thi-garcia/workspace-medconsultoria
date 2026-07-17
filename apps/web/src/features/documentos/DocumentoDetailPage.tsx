@@ -28,6 +28,7 @@ import { Button } from "../../components/ui/button";
 import { DocumentoEditor } from "./DocumentoEditor";
 import { Badge } from "../../components/ui/badge";
 import { QueryError } from "../../components/ui/query-error";
+import { isNotFoundError } from "../../lib/trpc-error";
 import { useConfirm, useConfirmar, usePrompt } from "../../components/ui/confirm-dialog";
 import {
   DocumentoBranded,
@@ -311,7 +312,7 @@ export function DocumentoDetailPage() {
   const ia = trpc.ia.disponivel.useQuery();
   const melhorarIA = trpc.documentos.melhorarComIA.useMutation({ onSuccess: invalidate });
 
-  if (doc.isError) {
+  if (doc.isError && !isNotFoundError(doc.error)) {
     return <QueryError onRetry={() => doc.refetch()} />;
   }
   if (doc.isLoading) {

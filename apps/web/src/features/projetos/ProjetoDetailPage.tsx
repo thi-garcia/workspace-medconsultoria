@@ -21,6 +21,7 @@ import { data } from "../../lib/format-date";
 import { Button } from "../../components/ui/button";
 import { PageHeader } from "../../components/ui/page-header";
 import { QueryError } from "../../components/ui/query-error";
+import { isNotFoundError } from "../../lib/trpc-error";
 import { KanbanCard, type CardItem } from "./KanbanCard";
 import { CardPanel } from "./CardPanel";
 import { CardFormDialog, type CardEditavel } from "./CardFormDialog";
@@ -192,7 +193,7 @@ export function ProjetoDetailPage() {
     move.mutate({ id: activeId, status: to, ordem: finalIndex });
   };
 
-  if (projeto.isError) {
+  if (projeto.isError && !isNotFoundError(projeto.error)) {
     return <QueryError onRetry={() => projeto.refetch()} />;
   }
   if (projeto.isLoading) {

@@ -30,6 +30,7 @@ import {
   type SituacaoComercial,
 } from "@app/shared";
 import { useAuth } from "../../../lib/auth-context";
+import { isNotFoundError } from "../../../lib/trpc-error";
 import { trpc } from "../../../lib/trpc";
 import { Button } from "../../../components/ui/button";
 import { Input } from "../../../components/ui/input";
@@ -151,7 +152,9 @@ export function ClienteDetailPage() {
   });
   useDynamicCrumb(cliente.data?.nome);
 
-  if (cliente.isError) {
+  // 404 (cliente inexistente) cai no bloco "não encontrado" abaixo — não no erro
+  // genérico de "Tentar de novo" (que sugere falha transitória de conexão).
+  if (cliente.isError && !isNotFoundError(cliente.error)) {
     return <QueryError onRetry={() => cliente.refetch()} />;
   }
   if (cliente.isLoading) {

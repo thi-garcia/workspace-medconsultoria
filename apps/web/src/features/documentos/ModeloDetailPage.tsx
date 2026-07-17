@@ -9,6 +9,7 @@ import { Label } from "../../components/ui/label";
 import { Select } from "../../components/ui/select";
 import { Badge } from "../../components/ui/badge";
 import { QueryError } from "../../components/ui/query-error";
+import { isNotFoundError } from "../../lib/trpc-error";
 import { useConfirm } from "../../components/ui/confirm-dialog";
 import { DocumentoBranded, previewModelo } from "./DocumentoBranded";
 import { DocumentoEditor } from "./DocumentoEditor";
@@ -59,7 +60,7 @@ export function ModeloDetailPage() {
     },
   });
 
-  if (q.isError) return <QueryError onRetry={() => q.refetch()} />;
+  if (q.isError && !isNotFoundError(q.error)) return <QueryError onRetry={() => q.refetch()} />;
   if (q.isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
