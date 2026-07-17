@@ -1,8 +1,10 @@
 import { FileUp, Paperclip, Trash2, User, Users } from "lucide-react";
+import { hasRoleLevel } from "@app/shared";
 import { trpc } from "../../../lib/trpc";
 import { Card, CardHeader, CardTitle, CardContent } from "../../../components/ui/card";
 import { useConfirm } from "../../../components/ui/confirm-dialog";
 import { UploadArquivo, ArquivoLink } from "../../../components/ui/upload-arquivo";
+import { useAuth } from "../../../lib/auth-context";
 import { data } from "../../../lib/format-date";
 
 /**
@@ -19,6 +21,9 @@ export function DocumentosClienteCard({ clienteId }: { clienteId: string }) {
     utils.clientes.servicos.invalidate({ id: clienteId });
   };
   const remover = trpc.clientes.removerArquivo.useMutation({ onSuccess: invalidate });
+  const { user } = useAuth();
+  // Excluir arquivo é ADMIN+ (RBAC). FUNCIONARIO envia/atualiza, mas não exclui.
+  const podeExcluirArquivo = hasRoleLevel(user.role, "ADMIN");
 
   const arquivos = q.data ?? [];
 
@@ -73,13 +78,15 @@ export function DocumentosClienteCard({ clienteId }: { clienteId: string }) {
                     {doCliente ? <User className="h-3 w-3" /> : <Users className="h-3 w-3" />}
                     {doCliente ? "Cliente" : "Equipe"}
                   </span>
-                  <button
-                    onClick={() => onRemover(a.id, a.nome)}
-                    title="Remover"
-                    className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+                  {podeExcluirArquivo && (
+                    <button
+                      onClick={() => onRemover(a.id, a.nome)}
+                      title="Remover"
+                      className="shrink-0 rounded p-1 text-muted-foreground/60 transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}

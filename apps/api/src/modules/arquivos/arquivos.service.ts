@@ -104,7 +104,7 @@ export async function getArquivo(id: string) {
  * Remove um arquivo (soft-delete do registro + apaga do disco). Se `clienteScope` vier,
  * garante que o arquivo é daquele cliente (escopo do Portal).
  */
-export async function removerArquivo(id: string, clienteScope?: string) {
+export async function removerArquivo(id: string, clienteScope?: string, removidoPorId?: string) {
   const arquivo = await prisma.arquivo.findFirst({
     where: { id, deletedAt: null },
     select: { id: true, caminho: true, clienteId: true, servicoId: true, requisitoId: true },
@@ -115,6 +115,12 @@ export async function removerArquivo(id: string, clienteScope?: string) {
   }
   await prisma.arquivo.update({ where: { id }, data: { deletedAt: new Date() } });
   await removerArquivoDisco(arquivo.caminho);
+  // Registro de auditoria: quem removeu e quando (a remoção da equipe informa o userId).
+  if (removidoPorId) {
+    await prisma.activityLog
+      .create({ data: { userId: removidoPorId, acao: "arquivo.removido", entidadeTipo: "arquivo", entidadeId: id } })
+      .catch(() => {});
+  }
 
   // Remover a entrega pode desmarcar o item e voltar o card para "Aguardando cliente".
   if (arquivo.requisitoId) {

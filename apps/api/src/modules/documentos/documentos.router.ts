@@ -14,7 +14,7 @@ import {
   resumirReuniaoSchema,
   gerarPautaSchema,
 } from "@app/shared";
-import { router, funcionarioProcedure } from "../../trpc/trpc.js";
+import { router, funcionarioProcedure, adminProcedure } from "../../trpc/trpc.js";
 import * as modelos from "./modelos.service.js";
 import * as documentos from "./documentos.service.js";
 import * as operadoras from "./operadoras.service.js";
@@ -22,28 +22,29 @@ import * as operadoras from "./operadoras.service.js";
 const nomeOperadora = z.string().trim().min(1, "Informe o nome").max(80);
 
 export const documentosRouter = router({
+  // Catálogo de modelos: FUNCIONARIO usa (list/get); administrar (criar/editar/remover) é ADMIN+.
   modelos: router({
     list: funcionarioProcedure.query(() => modelos.listModelos()),
     get: funcionarioProcedure.input(z.object({ id: z.string() })).query(({ input }) => modelos.getModelo(input.id)),
-    create: funcionarioProcedure
+    create: adminProcedure
       .input(createModeloSchema)
       .mutation(({ input }) => modelos.createModelo(input)),
-    update: funcionarioProcedure
+    update: adminProcedure
       .input(updateModeloSchema)
       .mutation(({ input }) => modelos.updateModelo(input)),
-    remove: funcionarioProcedure
+    remove: adminProcedure
       .input(z.object({ id: z.string() }))
       .mutation(({ input }) => modelos.removeModelo(input.id)),
   }),
 
-  // Catálogo de operadoras (Proposta de credenciamento) — editável e com exclusão permanente.
+  // Catálogo de operadoras: FUNCIONARIO consulta (list); administrar é ADMIN+.
   operadoras: router({
     list: funcionarioProcedure.query(() => operadoras.listOperadoras()),
-    criar: funcionarioProcedure.input(z.object({ nome: nomeOperadora })).mutation(({ input }) => operadoras.criarOperadora(input.nome)),
-    renomear: funcionarioProcedure
+    criar: adminProcedure.input(z.object({ nome: nomeOperadora })).mutation(({ input }) => operadoras.criarOperadora(input.nome)),
+    renomear: adminProcedure
       .input(z.object({ id: z.string().min(1), nome: nomeOperadora }))
       .mutation(({ input }) => operadoras.renomearOperadora(input.id, input.nome)),
-    remover: funcionarioProcedure
+    remover: adminProcedure
       .input(z.object({ id: z.string().min(1) }))
       .mutation(({ input }) => operadoras.removerOperadora(input.id)),
   }),
