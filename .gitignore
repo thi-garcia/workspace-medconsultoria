@@ -46,3 +46,6 @@ test-results/
 scripts/.keepalive-pause
 scripts/.keepalive.log
 scripts/.keepalive.pid
+
+# Versão HTML gerada do tracker (marked) — visualização local, não versionar
+AUDITORIA_FUNCIONAL_COMPLETA.html
