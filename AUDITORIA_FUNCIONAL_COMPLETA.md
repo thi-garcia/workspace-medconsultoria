@@ -281,7 +281,7 @@ Confirmar com o dono: `clientes.remove`/`removerArquivo` e `documentos.modelos.r
 | 0 | Merge PR #2 + CI verde na main | ✅ APROVADO (`de71e07`) |
 | 0 | Inventário (rotas, nav, Portal, RBAC, dados) + este documento | ✅ APROVADO (PR #3) |
 | 1a | **Serviços → Configurar: Salvar/Cancelar sem perda silenciosa** | ✅ **APROVADO** (PR #4, `cd645ad`) |
-| 1b | P1 `EmailsAdminPage` sem Cancelar explícito | ⬜ NÃO INICIADO |
+| 1b | **`EmailsAdminPage`: Cancelar + aviso antes de descartar edição** | ✅ **APROVADO** (PR #6) |
 | 1c | P2 padronizar rótulo fechar-sem-salvar em toda a app | ⬜ NÃO INICIADO |
 | 2 | Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras) | ⬜ NÃO INICIADO |
 | 3 | Validação funcional ao vivo (perfil × viewport) | ⬜ NÃO INICIADO |

@@ -89,16 +89,45 @@ export function EmailsAdminPage() {
 
   const atual = lista.data?.find((t) => t.chave === chave) ?? null;
 
+  const camposDe = (t: NonNullable<typeof lista.data>[number]): Campos => ({
+    assunto: t.assunto,
+    titulo: t.titulo,
+    corpo: t.corpo,
+    ctaTexto: t.ctaTexto ?? "",
+    nota: t.nota ?? "",
+  });
+
   const selecionar = (t: NonNullable<typeof lista.data>[number]) => {
     setChave(t.chave);
     setGrupoAtivo(t.grupo as GrupoId);
-    setForm({ assunto: t.assunto, titulo: t.titulo, corpo: t.corpo, ctaTexto: t.ctaTexto ?? "", nota: t.nota ?? "" });
+    setForm(camposDe(t));
     setSalvo(false);
     setAbaPrev("email");
   };
 
-  // Troca a aba de categoria e já abre a 1ª mensagem dela (o editor nunca fica vazio).
-  const trocarGrupo = (id: GrupoId) => {
+  // Há edição não salva na mensagem aberta?
+  const dirty = !!atual && JSON.stringify(form) !== JSON.stringify(camposDe(atual));
+
+  const confirmarDescarte = () =>
+    confirm({
+      title: "Descartar alterações?",
+      description: `Você editou "${atual?.label}" e ainda não salvou. Se sair agora, as alterações serão perdidas.`,
+      confirmText: "Descartar",
+      cancelText: "Continuar editando",
+      variant: "destructive",
+    });
+
+  // Abrir outra mensagem: se há edição pendente, confirma antes (evita perda silenciosa).
+  const irParaMensagem = async (t: NonNullable<typeof lista.data>[number]) => {
+    if (t.chave === chave) return;
+    if (dirty && !(await confirmarDescarte())) return;
+    selecionar(t);
+  };
+
+  // Trocar de categoria e abrir a 1ª mensagem dela (o editor nunca fica vazio).
+  const trocarGrupo = async (id: GrupoId) => {
+    if (id === grupoAtivo) return;
+    if (dirty && !(await confirmarDescarte())) return;
     setGrupoAtivo(id);
     const primeira = lista.data?.find((t) => t.grupo === id);
     if (primeira) selecionar(primeira);
@@ -275,7 +304,7 @@ export function EmailsAdminPage() {
               {(lista.data?.filter((t) => t.grupo === grupoAtivo) ?? []).map((t) => (
                 <button
                   key={t.chave}
-                  onClick={() => selecionar(t)}
+                  onClick={() => irParaMensagem(t)}
                   className={cn(
                     "flex w-full items-start gap-2.5 rounded-lg border p-3 text-left transition-colors",
                     chave === t.chave ? "border-primary/50 bg-primary/5" : "hover:bg-accent/50",
@@ -394,9 +423,16 @@ export function EmailsAdminPage() {
                   {salvar.error && <p className="text-sm text-destructive">{salvar.error.message}</p>}
 
                   <div className="flex flex-wrap items-center gap-2 pt-1">
-                    <Button onClick={onSalvar} disabled={salvar.isPending}>
+                    <Button onClick={onSalvar} disabled={!dirty || salvar.isPending}>
                       <Save className="h-4 w-4" />
                       Salvar
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => atual && setForm(camposDe(atual))}
+                      disabled={!dirty}
+                    >
+                      Cancelar
                     </Button>
                     <Button variant="outline" onClick={onTestar} disabled={testar.isPending}>
                       <Send className="h-4 w-4" />
