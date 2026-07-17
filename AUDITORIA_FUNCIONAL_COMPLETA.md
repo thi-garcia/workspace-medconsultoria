@@ -319,6 +319,14 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 *Responsividade (ADMIN/todas) · 360 / 390 / 768 / 1920*
 - **Ficha do cliente:** ⚠️→✅ **BUG-001 encontrado e corrigido** (ver abaixo). Após fix: sem overflow horizontal em 360/390/768. ✅
 
+*CLIENTE · Portal (desktop)*
+- **Portal renderiza completo:** Suporte (chamados + abrir), Seus serviços (Preencher/Cancelar), autosserviço, Seus projetos (progresso 67%), Documentos da Med (proposta "Aceita"), Seus documentos (upload), Seus e-mails, Próximas reuniões (estado vazio). ✅
+- **Isolamento:** URL interna (`/clientes`) força o Portal, sem menu de equipe; **API interna** (`clientes.list`, `financeiro`) → **403 FORBIDDEN**. ✅
+- 📌 *Observação (não-bug):* forte poluição de dados de teste visível ao cliente (≈19 chamados RT/E2E; serviços Guard/E2E SVC) → reforça a limpeza do Bloco 5.
+
+*Sessão / auth (edge)*
+- **Logout / sessão encerrada:** API protegida → **401**; navegar a rota protegida → **cai no login**, sem vazar dados. ✅
+
 ### Situações-limite validadas ao vivo (2026-07-17)
 - **Charset (emoji 🚑 + acentos + símbolos) + nome de 178 chars:** criar lead → **round-trip idêntico** (DB utf8mb4); após **refresh** persiste; **sem overflow** de layout. ✅
 - **XSS:** nome com `<b>ol</b>` é exibido como **texto literal** (React escapa) — não injeta HTML. ✅
