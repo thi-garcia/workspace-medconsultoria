@@ -104,7 +104,7 @@ Fonte: `apps/web/src/components/layout/AppLayout.tsx` (`NAV_GROUPS`) + páginas 
 | **Sistema** (ROOT) | **8 abas**: Visão geral, Incidentes, Desempenho, Banco, Erros, Sessões, Atividade, Manutenção | Diagnóstico IA, varredura, resolver/revogar |
 
 ### 2.1 `Serviços > Configurar` (foco do dono) e o padrão de Salvar/Cancelar
-Modal `ServicoConfigDialog` (`ServicosPage.tsx`) tem **4 abas**: **Detalhes** (tem "Salvar" próprio), **Para vender** (passos), **O cliente envia** (exigências), **A equipe faz** (roteiro, com "Salvar roteiro"). **Rodapé do modal: só "Concluído"** — não há "Salvar tudo"/"Cancelar" unificado; cada aba salva de forma independente (algumas a cada clique). ❌ **Inconsistente** com o padrão de rascunho local + **"Cancelar / Salvar alterações"** dos diálogos de catálogo `OrigensDialog`, `CategoriasDialog`, `OperadorasDialog`. → **item de correção prioritário** (§8).
+Modal `ServicoConfigDialog` (`ServicosPage.tsx`) tem **4 abas**: **Detalhes**, **Para vender** (passos), **O cliente envia** (exigências), **A equipe faz** (roteiro). ✅ **CORRIGIDO (Bloco 1a, PR #4):** Detalhes e Roteiro agora têm **Cancelar** + **Salvar** desabilitado sem mudança; trocar de aba/fechar com pendência **pede confirmação** ("Descartar alterações?"); rodapé **"Concluído" → "Fechar"**. Passos/Exigências seguem auto-save. Elimina a perda silenciosa de dados.
 
 ### 2.2 Achado de organização (UX) — descoberta de catálogos
 "Categorias", "Origens" e "Operadoras" **não estão em Ajustes**: Categorias vive dentro de `/financeiro`, Origens dentro de `/leads`, Operadoras só no fluxo de proposta de credenciamento em Documentos (sem entrada no menu). Um usuário que procure "onde configuro Categorias/Origens/Operadoras" **não acha em Ajustes**. → gap de organização (§8).
@@ -279,13 +279,18 @@ Confirmar com o dono: `clientes.remove`/`removerArquivo` e `documentos.modelos.r
 | Bloco | Descrição | Estado |
 |-------|-----------|--------|
 | 0 | Merge PR #2 + CI verde na main | ✅ APROVADO (`de71e07`) |
-| 0 | Inventário (rotas, nav, Portal, RBAC, dados) + este documento | ✅ APROVADO |
-| 1 | UX Salvar/Cancelar (P0 Serviços→Configurar) | ⬜ NÃO INICIADO |
-| 2 | Descoberta de catálogos em Ajustes | ⬜ NÃO INICIADO |
+| 0 | Inventário (rotas, nav, Portal, RBAC, dados) + este documento | ✅ APROVADO (PR #3) |
+| 1a | **Serviços → Configurar: Salvar/Cancelar sem perda silenciosa** | ✅ **APROVADO** (PR #4, `cd645ad`) |
+| 1b | P1 `EmailsAdminPage` sem Cancelar explícito | ⬜ NÃO INICIADO |
+| 1c | P2 padronizar rótulo fechar-sem-salvar em toda a app | ⬜ NÃO INICIADO |
+| 2 | Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras) | ⬜ NÃO INICIADO |
 | 3 | Validação funcional ao vivo (perfil × viewport) | ⬜ NÃO INICIADO |
 | 4 | Decisões de RBAC | ⛔ aguarda aval do dono |
 | 5 | Estratégia de dados / banco limpo | ⬜ plano a apresentar |
 | 6 | Conteúdo | ⛔ aguarda insumos do dono/Thaís |
+
+### Evidências
+- **Bloco 1a** (PR #4): `e2e/flows-servicos.spec.ts` — "Configurar > Detalhes: Salvar/Cancelar e aviso antes de descartar ao trocar de aba" (verde no navegador real + CI e2e). Salvar inicia desabilitado; editar habilita; trocar de aba com pendência dispara "Descartar alterações?"; "Continuar editando" preserva; "Cancelar" reverte. Verificado: lint 0 · typecheck 5/5 · vitest 52 · e2e flows-servicos 8/8.
 
 ---
 
