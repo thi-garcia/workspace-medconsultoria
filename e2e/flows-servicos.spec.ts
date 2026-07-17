@@ -34,8 +34,9 @@ test.describe("Bloco 7 — Serviços (ADMIN autoria)", () => {
     await cfg.getByRole("button", { name: "Adicionar" }).click();
     await expect(cfg.getByText(EXIGENCIA)).toBeVisible();
 
-    // 4. "Concluído" salva as exigências (nesta aba não há botão "Salvar" — é da aba Detalhes) e fecha
-    await cfg.getByRole("button", { name: "Concluído" }).click();
+    // 4. "O cliente envia" é auto-save; o "Fechar" do rodapé apenas fecha (sem pendências → sem aviso).
+    //    (o "X" do cabeçalho tem aria-label "Fechar" também; :has-text mira o botão do rodapé.)
+    await cfg.locator('button:has-text("Fechar")').click();
     await expect(cfg).toHaveCount(0);
 
     // 5. Refresh → reabrir Configurar → a exigência persiste
@@ -45,6 +46,50 @@ test.describe("Bloco 7 — Serviços (ADMIN autoria)", () => {
     const cfg2 = page.getByRole("dialog", { name: new RegExp(`Configurar.*${RUN}`) });
     await cfg2.getByRole("button", { name: "O cliente envia" }).click();
     await expect(cfg2.getByText(EXIGENCIA)).toBeVisible();
+  });
+
+  test("Configurar > Detalhes: Salvar/Cancelar e aviso antes de descartar ao trocar de aba", async ({ page }) => {
+    test.setTimeout(60_000);
+    const RUN = `SVC${Date.now().toString().slice(-6)}`;
+    const NOME = `Serviço Guard ${RUN}`;
+
+    // Cria o serviço e abre "Configurar" (abre na aba Detalhes)
+    await page.goto("/servicos");
+    await page.getByRole("button", { name: "Novo serviço" }).click();
+    const nc = page.getByRole("dialog", { name: "Novo serviço" });
+    await nc.locator("#s-nome").fill(NOME);
+    await nc.getByRole("button", { name: "Criar serviço" }).click();
+    await expect(nc).toHaveCount(0);
+
+    const card = page.locator("div").filter({ hasText: NOME }).filter({ has: page.getByRole("button", { name: "Configurar" }) }).last();
+    await card.getByRole("button", { name: "Configurar" }).click();
+    const cfg = page.getByRole("dialog", { name: new RegExp(`Configurar.*${RUN}`) });
+    await expect(cfg).toBeVisible();
+
+    // Sem alteração: Salvar começa DESABILITADO
+    const salvar = cfg.getByRole("button", { name: "Salvar", exact: true });
+    await expect(salvar).toBeDisabled();
+
+    // Edita o nome → Salvar habilita
+    await cfg.locator("#d-nome").fill(`${NOME} EDITADO`);
+    await expect(salvar).toBeEnabled();
+
+    // Trocar de aba com edição pendente → PEDE confirmação; "Continuar editando" mantém tudo
+    await cfg.getByRole("button", { name: "Para vender" }).click();
+    const aviso = page.getByRole("dialog", { name: "Descartar alterações?" });
+    await expect(aviso).toBeVisible();
+    await aviso.getByRole("button", { name: "Continuar editando" }).click();
+    await expect(aviso).toHaveCount(0);
+    await expect(cfg.locator("#d-nome")).toHaveValue(`${NOME} EDITADO`); // não perdeu o texto
+
+    // "Cancelar" reverte a edição e volta a desabilitar Salvar
+    await cfg.getByRole("button", { name: "Cancelar", exact: true }).click();
+    await expect(cfg.locator("#d-nome")).toHaveValue(NOME);
+    await expect(salvar).toBeDisabled();
+
+    // Agora sem pendência: trocar de aba NÃO pede confirmação
+    await cfg.getByRole("button", { name: "Para vender" }).click();
+    await expect(page.getByRole("dialog", { name: "Descartar alterações?" })).toHaveCount(0);
   });
 });
 

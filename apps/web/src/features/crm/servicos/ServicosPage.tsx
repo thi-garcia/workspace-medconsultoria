@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Plus,
@@ -214,7 +214,15 @@ function NovoServicoDialog({ open, onClose }: { open: boolean; onClose: () => vo
 }
 
 // ── Aba "Detalhes": editar nome/categoria/valor/descrição + ativar/remover ──
-function DetalhesPanel({ servico, onClose }: { servico: ServicoRow; onClose: () => void }) {
+function DetalhesPanel({
+  servico,
+  onClose,
+  onDirtyChange,
+}: {
+  servico: ServicoRow;
+  onClose: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const utils = trpc.useUtils();
   const confirm = useConfirm();
   const {
@@ -222,9 +230,11 @@ function DetalhesPanel({ servico, onClose }: { servico: ServicoRow; onClose: () 
     control,
     handleSubmit,
     reset,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<CreateServicoInput>({ resolver: zodResolver(createServicoSchema), defaultValues: { nome: "" } });
 
+  // (Re)inicializa o form só ao ABRIR um serviço diferente — não a cada refetch/toggle,
+  // para não apagar edições em andamento (ex.: ao clicar Desativar com texto não salvo).
   useEffect(() => {
     reset({
       nome: servico.nome,
@@ -236,14 +246,24 @@ function DetalhesPanel({ servico, onClose }: { servico: ServicoRow; onClose: () 
       percentualRecorrencia: servico.percentualRecorrencia,
       clausulasContrato: servico.clausulasContrato ?? "",
     });
-  }, [servico, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [servico.id, reset]);
+
+  // Informa o diálogo se há edição pendente (para avisar antes de trocar de aba/fechar).
+  useEffect(() => {
+    onDirtyChange?.(isDirty);
+  }, [isDirty, onDirtyChange]);
 
   const invalidate = () => utils.servicos.list.invalidate();
   const atualizar = trpc.servicos.atualizar.useMutation({ onSuccess: invalidate });
   const remover = trpc.servicos.remover.useMutation({ onSuccess: () => (invalidate(), onClose()) });
 
   return (
-    <form onSubmit={handleSubmit((d) => atualizar.mutate({ id: servico.id, ...d }))} className="space-y-4" noValidate>
+    <form
+      onSubmit={handleSubmit((d) => atualizar.mutate({ id: servico.id, ...d }, { onSuccess: () => reset(d) }))}
+      className="space-y-4"
+      noValidate
+    >
       <div className="space-y-1.5">
         <Label htmlFor="d-nome">Nome *</Label>
         <Input id="d-nome" placeholder="Ex.: Credenciamento" {...register("nome")} />
@@ -319,7 +339,17 @@ function DetalhesPanel({ servico, onClose }: { servico: ServicoRow; onClose: () 
         >
           <Trash2 className="h-4 w-4" /> Remover
         </Button>
-        <Button type="submit" className="ml-auto" disabled={atualizar.isPending}>
+        <Button
+          type="button"
+          variant="ghost"
+          className="ml-auto"
+          disabled={!isDirty || atualizar.isPending}
+          onClick={() => reset()}
+        >
+          Cancelar
+        </Button>
+        <Button type="submit" disabled={!isDirty || atualizar.isPending}>
+          {atualizar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Salvar
         </Button>
       </div>
@@ -675,31 +705,49 @@ function PassosPanel({ servico }: { servico: ServicoRow }) {
 // ── Aba "Roteiro": as tarefas (cartões) do projeto + o checklist de cada uma ──
 type RoteiroTarefa = { titulo: string; itens: string[] };
 
-function RoteiroPanel({ servico }: { servico: ServicoRow }) {
+function RoteiroPanel({ servico, onDirtyChange }: { servico: ServicoRow; onDirtyChange?: (dirty: boolean) => void }) {
   const utils = trpc.useUtils();
   const leituraInicial = (): RoteiroTarefa[] =>
     Array.isArray(servico.roteiro)
       ? (servico.roteiro as RoteiroTarefa[]).map((t) => ({ titulo: String(t?.titulo ?? ""), itens: Array.isArray(t?.itens) ? t.itens.map(String) : [] }))
       : [];
+  // Forma normalizada (o que de fato é salvo) — usada para comparar "há mudança pendente?".
+  const normalizar = (ts: RoteiroTarefa[]) =>
+    JSON.stringify(ts.map((t) => ({ titulo: t.titulo.trim(), itens: t.itens.map((i) => i.trim()).filter(Boolean) })).filter((t) => t.titulo));
   const [tarefas, setTarefas] = useState<RoteiroTarefa[]>(leituraInicial);
+  const [baseline, setBaseline] = useState<string>(() => normalizar(leituraInicial()));
   useEffect(() => {
-    setTarefas(leituraInicial());
+    const inicial = leituraInicial();
+    setTarefas(inicial);
+    setBaseline(normalizar(inicial));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [servico.id]);
 
-  const salvar = trpc.servicos.setRoteiro.useMutation({ onSuccess: () => utils.servicos.list.invalidate() });
+  const dirty = normalizar(tarefas) !== baseline;
+  useEffect(() => {
+    onDirtyChange?.(dirty);
+  }, [dirty, onDirtyChange]);
+
+  const salvar = trpc.servicos.setRoteiro.useMutation();
 
   const setTarefa = (ti: number, patch: Partial<RoteiroTarefa>) => setTarefas((ts) => ts.map((t, i) => (i === ti ? { ...t, ...patch } : t)));
   const setItem = (ti: number, ii: number, valor: string) =>
     setTarefa(ti, { itens: tarefas[ti]!.itens.map((it, i) => (i === ii ? valor : it)) });
 
-  const onSalvar = () =>
-    salvar.mutate({
-      servicoId: servico.id,
-      roteiro: tarefas
-        .map((t) => ({ titulo: t.titulo.trim(), itens: t.itens.map((i) => i.trim()).filter(Boolean) }))
-        .filter((t) => t.titulo),
-    });
+  const onSalvar = () => {
+    const limpo = tarefas
+      .map((t) => ({ titulo: t.titulo.trim(), itens: t.itens.map((i) => i.trim()).filter(Boolean) }))
+      .filter((t) => t.titulo);
+    salvar.mutate(
+      { servicoId: servico.id, roteiro: limpo },
+      {
+        onSuccess: () => {
+          utils.servicos.list.invalidate();
+          setBaseline(JSON.stringify(limpo)); // o que acabou de ser salvo vira a nova base (dirty→false)
+        },
+      },
+    );
+  };
 
   return (
     <div className="space-y-3">
@@ -763,8 +811,11 @@ function RoteiroPanel({ servico }: { servico: ServicoRow }) {
       </button>
 
       <div className="flex items-center justify-end gap-2">
-        {salvar.isSuccess && <span className="text-xs text-success">Roteiro salvo ✓</span>}
-        <Button onClick={onSalvar} disabled={salvar.isPending}>
+        {salvar.isSuccess && !dirty && <span className="text-xs text-success">Roteiro salvo ✓</span>}
+        <Button type="button" variant="ghost" disabled={!dirty || salvar.isPending} onClick={() => setTarefas(leituraInicial())}>
+          Cancelar
+        </Button>
+        <Button onClick={onSalvar} disabled={!dirty || salvar.isPending}>
           {salvar.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
           Salvar roteiro
         </Button>
@@ -793,6 +844,7 @@ function ServicoConfigDialog({
   abaInicial: Aba;
   onClose: () => void;
 }) {
+  const confirm = useConfirm();
   const [aba, setAba] = useState<Aba>(abaInicial);
   // Só (re)define a aba ao ABRIR um serviço diferente — não a cada refetch da lista
   // (invalidar `servicos.list` troca a referência de `servico` e não deve trocar de aba).
@@ -806,17 +858,47 @@ function ServicoConfigDialog({
     }
   }, [servico, abaInicial]);
 
+  // A aba ativa (Detalhes/Roteiro) avisa se há edição pendente. As abas de auto-save
+  // (Para vender / O cliente envia) nunca ficam "sujas". Guardamos a troca de aba e o
+  // fechamento para não perder texto digitado sem o usuário confirmar.
+  const dirtyRef = useRef(false);
+  const setDirty = useCallback((d: boolean) => {
+    dirtyRef.current = d;
+  }, []);
+
+  const confirmarDescarte = () =>
+    confirm({
+      title: "Descartar alterações?",
+      description: `Você tem alterações não salvas em "${ABAS.find((a) => a.chave === aba)?.label}". Se sair agora sem salvar, elas serão perdidas.`,
+      confirmText: "Descartar",
+      cancelText: "Continuar editando",
+      variant: "destructive",
+    });
+
+  const pedirTroca = async (nova: Aba) => {
+    if (nova === aba) return;
+    if (dirtyRef.current && !(await confirmarDescarte())) return;
+    dirtyRef.current = false;
+    setAba(nova);
+  };
+
+  const pedirFechar = async () => {
+    if (dirtyRef.current && !(await confirmarDescarte())) return;
+    dirtyRef.current = false;
+    onClose();
+  };
+
   if (!servico) return null;
 
   return (
     <Modal
       open={!!servico}
-      onClose={onClose}
+      onClose={pedirFechar}
       title={`Configurar · ${servico.nome}`}
       size="lg"
       footer={
-        <Button variant="outline" onClick={onClose}>
-          Concluído
+        <Button variant="outline" onClick={pedirFechar}>
+          Fechar
         </Button>
       }
     >
@@ -828,7 +910,7 @@ function ServicoConfigDialog({
             return (
               <button
                 key={a.chave}
-                onClick={() => setAba(a.chave)}
+                onClick={() => pedirTroca(a.chave)}
                 className={cn(
                   "flex flex-1 items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-sm font-medium transition-colors",
                   ativo ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
@@ -840,8 +922,8 @@ function ServicoConfigDialog({
           })}
         </div>
 
-        {aba === "detalhes" && <DetalhesPanel servico={servico} onClose={onClose} />}
-        {aba === "roteiro" && <RoteiroPanel servico={servico} />}
+        {aba === "detalhes" && <DetalhesPanel servico={servico} onClose={onClose} onDirtyChange={setDirty} />}
+        {aba === "roteiro" && <RoteiroPanel servico={servico} onDirtyChange={setDirty} />}
         {aba === "exigencias" && <ExigenciasPanel servico={servico} />}
         {aba === "passos" && <PassosPanel servico={servico} />}
       </div>
