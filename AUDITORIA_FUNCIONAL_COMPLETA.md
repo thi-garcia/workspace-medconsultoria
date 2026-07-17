@@ -284,10 +284,20 @@ Confirmar com o dono: `clientes.remove`/`removerArquivo` e `documentos.modelos.r
 | 1b | **`EmailsAdminPage`: Cancelar + aviso antes de descartar edição** | ✅ **APROVADO** (PR #6) |
 | 1c | P2 padronizar rótulo fechar-sem-salvar | ✅ resolvido no 1a (único ofensor real era Serviços; "Concluído" restante é auto-save, correto) |
 | 2 | **Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras)** | ✅ **APROVADO** (PR #7) |
-| 3 | Validação funcional ao vivo (perfil × viewport) | ⬜ NÃO INICIADO |
+| 3 | Validação funcional ao vivo (perfil × viewport) | 🟨 EM ANDAMENTO |
 | 4 | Decisões de RBAC | ⛔ aguarda aval do dono |
 | 5 | Estratégia de dados / banco limpo | ⬜ plano a apresentar |
 | 6 | Conteúdo | ⛔ aguarda insumos do dono/Thaís |
+
+### Bloco 3 — validação ao vivo (em andamento)
+Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport, além da suíte E2E (62+ testes) como espinha dorsal reproduzível. Cada tela → estado + evidência.
+
+**Já validado ao vivo (ROOT, desktop 1920×1080), 2026-07-17:**
+- **Início/Dashboard (ROOT):** carrega completo — widgets "Meu dia" + "Gestão da empresa" (Saúde do sistema, Financeiro, Funil, Projetos, Carga da equipe, Clientes, Docs em revisão, Atividade). Sem quebra. ✅
+- **Ajustes → seção "Catálogos" (Bloco 2):** os 3 cards novos renderizam consistentes; screenshot conferido. ✅
+- **Serviços → Configurar → Detalhes (Bloco 1a):** verificação rigorosa do estado dos botões ao abrir sem edição → `Salvar` **disabled**, `Cancelar` **disabled**, `Fechar` habilitado (evita "salvo" falso e perda de dados). ✅
+
+**Próximo:** varrer os demais módulos e repetir nos 4 perfis (ADMIN/FUNCIONARIO/CLIENTE) e 4 viewports; registrar defeitos → ciclo de correção.
 
 ### Evidências
 - **Bloco 1a** (PR #4): `e2e/flows-servicos.spec.ts` — "Configurar > Detalhes: Salvar/Cancelar e aviso antes de descartar ao trocar de aba" (verde no navegador real + CI e2e). Salvar inicia desabilitado; editar habilita; trocar de aba com pendência dispara "Descartar alterações?"; "Continuar editando" preserva; "Cancelar" reverte. Verificado: lint 0 · typecheck 5/5 · vitest 52 · e2e flows-servicos 8/8.
