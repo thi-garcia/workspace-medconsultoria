@@ -324,8 +324,17 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 - **Isolamento:** URL interna (`/clientes`) força o Portal, sem menu de equipe; **API interna** (`clientes.list`, `financeiro`) → **403 FORBIDDEN**. ✅
 - 📌 *Observação (não-bug):* forte poluição de dados de teste visível ao cliente (≈19 chamados RT/E2E; serviços Guard/E2E SVC) → reforça a limpeza do Bloco 5.
 
+*ADMIN · desktop*
+- **Menu:** Início/Vendas/Clientes/Projetos/Agenda/Mensagens/Documentos/**Financeiro**/**Ajustes** — **sem Sistema** (ROOT-only). ✅
+- **RBAC (outro lado):** na ficha do cliente, ADMIN **vê** "Desativar" e "Arquivar" (que o FUNCIONARIO não via). ✅
+- **/sistema por URL direta:** UI "Acesso restrito" + **API `sistema.saude` → 403 FORBIDDEN** (bloqueado em UI e API). ✅
+- **Agenda:** renderiza íntegra (Lista/Dia/Semana/Mês/Ano, Resumo IA, Novo evento), sem overflow. ✅
+
 *Sessão / auth (edge)*
 - **Logout / sessão encerrada:** API protegida → **401**; navegar a rota protegida → **cai no login**, sem vazar dados. ✅
+- **Voltar/avançar do navegador:** Clientes↔Agenda navegam corretamente pela history do SPA, sem quebra de estado. ✅
+
+**Perfis validados ao vivo:** ✅ ROOT · ✅ ADMIN · ✅ FUNCIONARIO · ✅ CLIENTE (os 4).
 
 ### Situações-limite validadas ao vivo (2026-07-17)
 - **Charset (emoji 🚑 + acentos + símbolos) + nome de 178 chars:** criar lead → **round-trip idêntico** (DB utf8mb4); após **refresh** persiste; **sem overflow** de layout. ✅
