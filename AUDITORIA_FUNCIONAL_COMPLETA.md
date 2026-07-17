@@ -302,12 +302,27 @@ Implementado **no backend** (não só escondendo botões) + testes `apps/api/src
 ### Bloco 3 — validação ao vivo (em andamento)
 Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport, além da suíte E2E (62+ testes) como espinha dorsal reproduzível. Cada tela → estado + evidência.
 
-**Já validado ao vivo (ROOT, desktop 1920×1080), 2026-07-17:**
-- **Início/Dashboard (ROOT):** carrega completo — widgets "Meu dia" + "Gestão da empresa" (Saúde do sistema, Financeiro, Funil, Projetos, Carga da equipe, Clientes, Docs em revisão, Atividade). Sem quebra. ✅
-- **Ajustes → seção "Catálogos" (Bloco 2):** os 3 cards novos renderizam consistentes; screenshot conferido. ✅
-- **Serviços → Configurar → Detalhes (Bloco 1a):** verificação rigorosa do estado dos botões ao abrir sem edição → `Salvar` **disabled**, `Cancelar` **disabled**, `Fechar` habilitado (evita "salvo" falso e perda de dados). ✅
+**Já validado ao vivo (2026-07-17):**
 
-**Próximo:** varrer os demais módulos e repetir nos 4 perfis (ADMIN/FUNCIONARIO/CLIENTE) e 4 viewports; registrar defeitos → ciclo de correção.
+*ROOT · desktop 1920×1080*
+- **Início/Dashboard:** carrega completo — widgets "Meu dia" + "Gestão da empresa" (Saúde do sistema, Financeiro, Funil, Projetos, Carga da equipe, Clientes, Docs em revisão, Atividade). ✅
+- **Ajustes → "Catálogos" (Bloco 2):** 3 cards novos consistentes; screenshot conferido. ✅
+- **Serviços → Configurar → Detalhes (Bloco 1a):** ao abrir sem edição → `Salvar` **disabled**, `Cancelar` **disabled**, `Fechar` ok. ✅
+- **Vendas (Funil):** KPIs, busca, filtro por responsável, Kanban 5 etapas, estados vazios, ações por card. Modal **Novo lead** abre completo; **validação de obrigatório** ("Informe o nome") confirmada ao clicar Criar vazio. ✅
+
+*FUNCIONARIO · desktop (validação de RBAC — Bloco 4)*
+- **Menu:** só Início/Vendas/Clientes/Projetos/Agenda/Mensagens/Documentos — **sem Financeiro/Ajustes/Sistema**. ✅
+- **/financeiro por URL direta → "Acesso restrito"** (RoleGuard), sem vazar conteúdo. ✅
+- **Ficha do cliente:** **sem** botões Arquivar/Desativar (só Resumir IA/Nova oportunidade/Editar). ✅
+- **API direta** (`clientes.remove`/`setAtivo`) → **403 FORBIDDEN "Sem permissão"** — backend bloqueia mesmo contornando a UI. ✅
+
+*Responsividade (ADMIN/todas) · 360 / 390 / 768 / 1920*
+- **Ficha do cliente:** ⚠️→✅ **BUG-001 encontrado e corrigido** (ver abaixo). Após fix: sem overflow horizontal em 360/390/768. ✅
+
+### Bugs encontrados e corrigidos
+- **BUG-001 — overflow horizontal na ficha do cliente no mobile.** O grid `grid gap-6 lg:grid-cols-3` (`ClienteDetailPage`) não tinha `grid-cols-1` no default: no mobile o único track virava `min-content` e esticava para ~696px em viewport de 390 → scroll horizontal. **Corrigido** com `grid-cols-1` (Tailwind = `minmax(0,1fr)`) + `min-w-0` na coluna principal. **Regressão:** `responsive.spec.ts` agora inclui `/clientes/$id` (a ficha) nos 5 viewports. Reproduzido ao vivo (696px pré-fix → 0 pós-fix). PR #10.
+
+**Próximo:** continuar a varredura módulo a módulo (ADMIN/CLIENTE + os demais módulos), repetindo por viewport; incluindo verificar o mesmo anti-padrão de grid nas páginas Configurações/Documento/Modelo quando percorridas.
 
 ### Evidências
 - **Bloco 1a** (PR #4): `e2e/flows-servicos.spec.ts` — "Configurar > Detalhes: Salvar/Cancelar e aviso antes de descartar ao trocar de aba" (verde no navegador real + CI e2e). Salvar inicia desabilitado; editar habilita; trocar de aba com pendência dispara "Descartar alterações?"; "Continuar editando" preserva; "Cancelar" reverte. Verificado: lint 0 · typecheck 5/5 · vitest 52 · e2e flows-servicos 8/8.

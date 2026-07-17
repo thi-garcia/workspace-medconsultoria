@@ -15,7 +15,15 @@ test.describe("Responsividade (ADMIN)", () => {
   for (const vp of VIEWPORTS) {
     test(`sem overflow horizontal @ ${vp.nome}`, async ({ page }) => {
       await page.setViewportSize({ width: vp.w, height: vp.h });
-      for (const url of PAGINAS) {
+
+      // Inclui a FICHA do 1º cliente (/clientes/$id): o grid da ficha precisava de grid-cols-1
+      // no mobile (senão o track vira min-content e estoura ~696px em 390). Regressão viva.
+      const res = await page.request.get("/trpc/clientes.list?batch=1&input=" + encodeURIComponent(JSON.stringify({ 0: { json: {} } })));
+      const lista = ((await res.json())?.[0]?.result?.data?.json ?? []) as Array<{ id: string }>;
+      const paginas = [...PAGINAS];
+      if (lista[0]?.id) paginas.push(`/clientes/${lista[0].id}`);
+
+      for (const url of paginas) {
         await page.goto(url);
         await page.waitForLoadState("networkidle");
         const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
