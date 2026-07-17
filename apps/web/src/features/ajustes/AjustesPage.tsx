@@ -1,12 +1,20 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Briefcase, Mail, UserCog, Send, FileText, ChevronRight, type LucideIcon } from "lucide-react";
+import { Briefcase, Mail, UserCog, Send, FileText, Tags, Compass, Building2, ChevronRight, type LucideIcon } from "lucide-react";
 import { PageHeader } from "../../components/ui/page-header";
+import { CategoriasDialog } from "../financeiro/CategoriasDialog";
+import { OrigensDialog } from "../crm/leads/OrigensDialog";
+import { OperadorasDialog } from "../documentos/OperadorasDialog";
+
+type DialogId = "categorias" | "origens" | "operadoras";
 
 interface AjusteItem {
   icon: LucideIcon;
   label: string;
   desc: string;
-  to: string;
+  /** Ou navega para uma página (`to`), ou abre um diálogo de catálogo aqui mesmo (`dialog`). */
+  to?: string;
+  dialog?: DialogId;
 }
 
 /**
@@ -39,6 +47,30 @@ const SECOES: { titulo: string; descricao: string; itens: AjusteItem[] }[] = [
     ],
   },
   {
+    titulo: "Catálogos",
+    descricao: "Listas reutilizáveis pelo sistema. Ficam também onde são usadas — aqui você acha todas num lugar só.",
+    itens: [
+      {
+        icon: Tags,
+        label: "Categorias financeiras",
+        desc: "As categorias de entradas e saídas — por carteira Empresa e Pessoal — usadas no Financeiro.",
+        dialog: "categorias",
+      },
+      {
+        icon: Compass,
+        label: "Origens de leads",
+        desc: "De onde vêm seus contatos (indicação, site, anúncio…), usadas no funil de Vendas.",
+        dialog: "origens",
+      },
+      {
+        icon: Building2,
+        label: "Operadoras e convênios",
+        desc: "O catálogo de operadoras usado nas propostas de credenciamento.",
+        dialog: "operadoras",
+      },
+    ],
+  },
+  {
     titulo: "Administração",
     descricao: "Os bastidores da empresa — acesso restrito.",
     itens: [
@@ -59,6 +91,8 @@ const SECOES: { titulo: string; descricao: string; itens: AjusteItem[] }[] = [
 ];
 
 export function AjustesPage() {
+  const [dialog, setDialog] = useState<DialogId | null>(null);
+
   return (
     <div className="flex h-full flex-col gap-5">
       <PageHeader
@@ -73,28 +107,42 @@ export function AjustesPage() {
               <p className="text-xs text-muted-foreground">{secao.descricao}</p>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {secao.itens.map((it) => (
-                <Link
-                  key={it.to}
-                  to={it.to}
-                  className="group flex items-start gap-3 rounded-xl border bg-card p-4 shadow-sm transition-all hover:border-primary/40 hover:shadow-md"
-                >
-                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                    <it.icon className="h-5 w-5" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-1 font-semibold">
-                      {it.label}
-                      <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+              {secao.itens.map((it) => {
+                const cls =
+                  "group flex items-start gap-3 rounded-xl border bg-card p-4 text-left shadow-sm transition-all hover:border-primary/40 hover:shadow-md";
+                const inner = (
+                  <>
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                      <it.icon className="h-5 w-5" />
                     </span>
-                    <span className="mt-0.5 block text-sm text-muted-foreground">{it.desc}</span>
-                  </span>
-                </Link>
-              ))}
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1 font-semibold">
+                        {it.label}
+                        <ChevronRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
+                      </span>
+                      <span className="mt-0.5 block text-sm text-muted-foreground">{it.desc}</span>
+                    </span>
+                  </>
+                );
+                return it.to ? (
+                  <Link key={it.label} to={it.to} className={cls}>
+                    {inner}
+                  </Link>
+                ) : (
+                  <button key={it.label} type="button" onClick={() => it.dialog && setDialog(it.dialog)} className={cls}>
+                    {inner}
+                  </button>
+                );
+              })}
             </div>
           </section>
         ))}
       </div>
+
+      {/* Catálogos abertos a partir de Ajustes (mesmos diálogos usados em Financeiro/Vendas/Documentos). */}
+      <CategoriasDialog open={dialog === "categorias"} onClose={() => setDialog(null)} />
+      <OrigensDialog open={dialog === "origens"} onClose={() => setDialog(null)} />
+      <OperadorasDialog open={dialog === "operadoras"} onClose={() => setDialog(null)} />
     </div>
   );
 }

@@ -282,8 +282,8 @@ Confirmar com o dono: `clientes.remove`/`removerArquivo` e `documentos.modelos.r
 | 0 | Inventário (rotas, nav, Portal, RBAC, dados) + este documento | ✅ APROVADO (PR #3) |
 | 1a | **Serviços → Configurar: Salvar/Cancelar sem perda silenciosa** | ✅ **APROVADO** (PR #4, `cd645ad`) |
 | 1b | **`EmailsAdminPage`: Cancelar + aviso antes de descartar edição** | ✅ **APROVADO** (PR #6) |
-| 1c | P2 padronizar rótulo fechar-sem-salvar em toda a app | ⬜ NÃO INICIADO |
-| 2 | Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras) | ⬜ NÃO INICIADO |
+| 1c | P2 padronizar rótulo fechar-sem-salvar | ✅ resolvido no 1a (único ofensor real era Serviços; "Concluído" restante é auto-save, correto) |
+| 2 | **Descoberta de catálogos em Ajustes (Categorias/Origens/Operadoras)** | ✅ **APROVADO** (PR #7) |
 | 3 | Validação funcional ao vivo (perfil × viewport) | ⬜ NÃO INICIADO |
 | 4 | Decisões de RBAC | ⛔ aguarda aval do dono |
 | 5 | Estratégia de dados / banco limpo | ⬜ plano a apresentar |
