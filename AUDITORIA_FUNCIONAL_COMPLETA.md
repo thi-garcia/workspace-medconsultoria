@@ -330,6 +330,12 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 - **/sistema por URL direta:** UI "Acesso restrito" + **API `sistema.saude` → 403 FORBIDDEN** (bloqueado em UI e API). ✅
 - **Agenda:** renderiza íntegra (Lista/Dia/Semana/Mês/Ano, Resumo IA, Novo evento), sem overflow. ✅
 
+*Upload / download / tipos de arquivo (edge)*
+- **Upload real (ADMIN):** anexar `up.pdf` na ficha do cliente → aceito (`application/pdf`, 192 b), aparece na lista/UI, persiste. ✅
+- **Download round-trip:** GET `/arquivos/{id}` → 200, `content-type application/pdf`, conteúdo começa com `%PDF` (idêntico). ✅
+- **Tipos aceitos** (widget `accept`): `.pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx` — cobre PDF/JPG/PNG/DOCX/XLSX; `.exe` fora (e backend rejeita tipo inválido com 415, coberto por `flows-arquivos`). ✅
+- Cleanup do arquivo de teste feito (ADMIN `removerArquivo`).
+
 *Sessão / auth (edge)*
 - **Logout / sessão encerrada:** API protegida → **401**; navegar a rota protegida → **cai no login**, sem vazar dados. ✅
 - **Voltar/avançar do navegador:** Clientes↔Agenda navegam corretamente pela history do SPA, sem quebra de estado. ✅
