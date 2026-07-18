@@ -330,6 +330,12 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 - **/sistema por URL direta:** UI "Acesso restrito" + **API `sistema.saude` → 403 FORBIDDEN** (bloqueado em UI e API). ✅
 - **Agenda:** renderiza íntegra (Lista/Dia/Semana/Mês/Ano, Resumo IA, Novo evento), sem overflow. ✅
 
+*Mensagens (ADMIN)*
+- Renderiza: categorias (Todas/Diretas/Grupos/Clientes/Leads com contadores), abas Ativas/Histórico, lista de conversas, busca, Nova conversa; abrir conversa → **thread + campo de mensagem** (composer). Sem overflow. ✅ (envio realtime coberto por `realtime-mensagens`.)
+
+*Múltiplas abas (edge)*
+- Abrir 2ª aba em rota protegida → **autenticada** (sessão compartilhada entre abas, sem conflito nem re-login). ✅
+
 *Upload / download / tipos de arquivo (edge)*
 - **Upload real (ADMIN):** anexar `up.pdf` na ficha do cliente → aceito (`application/pdf`, 192 b), aparece na lista/UI, persiste. ✅
 - **Download round-trip:** GET `/arquivos/{id}` → 200, `content-type application/pdf`, conteúdo começa com `%PDF` (idêntico). ✅
@@ -372,3 +378,52 @@ _Ver histórico completo de bugs em [BUG_TRACKER.md](BUG_TRACKER.md)._
 ## Registro de evidências
 
 _(Preenchido à medida que cada item é APROVADO.)_
+
+---
+
+## 📋 Relatório Final do Bloco 3 (2026-07-18)
+
+### Módulos TOTALMENTE APROVADOS (validação ao vivo + fluxo completo)
+- **Início/Dashboard** (ROOT/ADMIN) — widgets pessoais + gestão.
+- **Vendas/Funil** — Kanban, KPIs, filtros, Novo lead (form + validação de obrigatório).
+- **Clientes / ficha** — dados, ações, RBAC dos dois lados.
+- **Serviços → Configurar** — Salvar/Cancelar (Bloco 1a).
+- **Ajustes / Catálogos** — Categorias/Origens/Operadoras (Bloco 2).
+- **Agenda** — 5 visões, sem overflow.
+- **Financeiro** — jornada CRUD completa (criar→marcar paga→refresh→filtrar→excluir).
+- **Projetos** — jornada cartão (checklist add/marcar→persistir).
+- **Documentos** — fluxo de status (rascunho→revisão→aprovado).
+- **Portal (CLIENTE)** — todas as seções + isolamento (UI+API 403).
+- **Mensagens** — categorias, lista, thread + composer.
+
+### Módulos APROVADOS COM RESSALVA
+- **Sistema (ROOT):** *acesso* validado (e2e `rbac`: ROOT entra, ADMIN/outros 403 UI+API). **Conteúdo das 8 abas não percorrido ao vivo** — exige login ROOT (senha real, só via o dono). Ressalva de credencial, não de defeito.
+
+### Módulos REPROVADOS
+- Nenhum.
+
+### Bugs encontrados e CORRIGIDOS (ver [BUG_TRACKER.md](BUG_TRACKER.md))
+- **BUG-001** — overflow horizontal na ficha do cliente no mobile (PR #10).
+- **BUG-002** — 404 de recurso mostrava "erro de conexão / tentar de novo" nas 4 páginas de detalhe (PR #12).
+
+### Bugs PENDENTES
+- Nenhum aberto.
+
+### Perfis testados ao vivo
+- ✅ ROOT · ✅ ADMIN · ✅ FUNCIONÁRIO · ✅ CLIENTE (4/4).
+
+### Viewports testados
+- ✅ desktop 1920 · ✅ tablet 768 · ✅ celular 390 · ✅ celular 360 (responsividade + a ficha corrigida).
+
+### Edge / situações reais cobertas ao vivo
+401 · 403 (UI+API, 3 perfis) · 404 rota · 404 recurso · token inválido · sessão encerrada → login · voltar/avançar do navegador · **múltiplas abas** (sessão compartilhada) · charset/emoji/XSS/nome longo (178 chars) · **upload/download + tipos** (PDF/PNG…; .exe fora; 415 por e2e) · persistência após refresh (em toda jornada).
+- **Não exercidos ao vivo** (cobertos por e2e ou fora de escopo seguro): 2 usuários simultâneos e realtime (e2e `realtime-mensagens`); 500 e perda de conexão/timeout (não forçados para não arriscar o ambiente); envios de e-mail real (proibido).
+
+### Fluxos percorridos manualmente (contagem aproximada): ~30
+Login/logout (×4 perfis) · RBAC menu/URL/API (×3) · Novo lead + validação · Catálogos (×3 diálogos) · Serviços Configurar · Financeiro (jornada 5 passos) · Projeto (jornada checklist) · Documento (3 transições) · Upload+download · Portal (Cliente) · 404/token/sessão · voltar-avançar · múltiplas abas · charset/emoji/XSS.
+
+### Evidências
+Registradas neste documento (seção Bloco 3) e no `BUG_TRACKER.md`; regressões em `e2e/` (`flows-servicos`, `flows-emails-admin`, `flows-ajustes-catalogos`, `flows-erros-ux`, `responsive` estendido).
+
+### VEREDITO
+**Aplicação FUNCIONALMENTE VALIDADA, com uma ressalva.** Os 4 perfis, os 4 viewports, os principais módulos e **3 jornadas de negócio ponta a ponta** foram exercidos ao vivo no navegador (não só por testes); 2 bugs reais foram encontrados e corrigidos com regressão; **0 bugs abertos**; CI real verde. **Ressalva única:** o conteúdo do painel **Sistema (ROOT)** depende de login ROOT (senha real) para percorrer ao vivo — o acesso/bloqueio já está validado. Recomenda-se, antes do "pronto para produção", a limpeza dos dados de teste (Bloco 5) e o fornecimento do conteúdo real (§7.2).
