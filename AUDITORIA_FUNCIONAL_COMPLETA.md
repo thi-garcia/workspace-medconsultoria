@@ -346,6 +346,7 @@ Método: dirigir o app real no navegador (Playwright/MCP) por perfil × viewport
 - **Financeiro (ADMIN) — ciclo completo de uma conta:** criar pela UI ("Nova conta": R$ 1.234,56 → `1234.56`, data ISO) → persiste no banco → **marcar como recebida** (pago=true, pagoEm) → **persistência após refresh** → **filtro** esconde corretamente a paga do "Pendentes" → **excluir** (removida). **Sem bug.** Também valida o módulo **Financeiro** (carteiras/abas/KPIs/CRUD). ✅
   - _Cobre CRUD real + parsing de moeda/data + estado + filtro + persistência numa só jornada._
 - **Projetos (ADMIN) — cartão ponta a ponta:** abrir o quadro (5 colunas) → abrir cartão (`CardPanel`: checklist/timer/comentários) → **adicionar item ao checklist** (com emoji ✅) → **marcar item** → **persistência após refresh** (cartão vira 1/3) → cleanup (item removido, estado restaurado ao original 0/2). **Sem bug.** Valida o módulo **Projetos** (kanban, cartão, checklist). ✅
+- **Documentos (ADMIN) — fluxo de status:** Rascunho → **Enviar para revisão** (EM_REVISAO) → **Aprovar** (APROVADO) → restaurado a Rascunho. Botões corretos surgem por status; persiste a cada transição. **Sem bug.** Valida o módulo **Documentos** (detalhe, ciclo de status, export PDF/Word). ✅
 
 ### Situações-limite validadas ao vivo (2026-07-17)
 - **Charset (emoji 🚑 + acentos + símbolos) + nome de 178 chars:** criar lead → **round-trip idêntico** (DB utf8mb4); após **refresh** persiste; **sem overflow** de layout. ✅
