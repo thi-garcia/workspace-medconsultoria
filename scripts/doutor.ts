@@ -4,11 +4,15 @@
  *   pnpm doutor                  → varre a app que está no ar (dev)
  *   pnpm doutor --url http://... → varre outro endereço
  *   pnpm doutor --perfil admin   → entra como ADMIN em vez de ROOT
+ *   pnpm doutor --perfil cliente → varre o PORTAL DO CLIENTE
  *
  * SOMENTE LEITURA: navega e inspeciona. Não clica em nada destrutivo, não cria, não apaga,
  * não envia e-mail. Pode rodar quantas vezes quiser, inclusive com o app em uso.
  *
- * O que detecta, em cada rota e em 3 tamanhos de tela:
+ * Cobre a área da equipe (--perfil root/admin) e o Portal do Cliente (--perfil cliente),
+ * em 8 tamanhos de tela — de 320px (celular pequeno) a 1920px.
+ *
+ * O que detecta:
  *   - página que não carrega, quebra ou fica em branco;
  *   - erro de JavaScript (pageerror) e erro de console;
  *   - valores crus vazando na tela (undefined, NaN, [object Object], Invalid Date…);
@@ -37,19 +41,38 @@ const SENHA = process.env.SEED_ROOT_PASSWORD;
 const EMAIL =
   PERFIL === "admin"
     ? (process.env.SEED_ADMIN_EMAIL ?? "thais.garcia@medconsultoria.com.br")
-    : (process.env.SEED_ROOT_EMAIL ?? "root@medconsultoria.com.br");
+    : PERFIL === "cliente"
+      ? (process.env.DOUTOR_CLIENTE_EMAIL ?? "cliente@medconsultoria.com.br")
+      : (process.env.SEED_ROOT_EMAIL ?? "root@medconsultoria.com.br");
+/** A senha do Portal é a de teste; a da equipe vem do .env. */
+const SENHA_PERFIL = PERFIL === "cliente" ? (process.env.DOUTOR_CLIENTE_SENHA ?? SENHA) : SENHA;
 
-/** Rotas internas da equipe. As públicas (login, captura, portal) têm varredura própria. */
-const ROTAS = [
+/** Rotas internas da equipe. */
+const ROTAS_EQUIPE = [
   "/", "/leads", "/clientes", "/projetos", "/agenda", "/mensagens", "/documentos",
   "/financeiro", "/ajustes", "/servicos", "/modelos", "/usuarios", "/emails-enviados",
   "/configuracoes", "/sistema",
 ];
 
+/** O Portal do Cliente é uma página só (PortalLayout + PortalHome), fora do router da equipe. */
+const ROTAS_PORTAL = ["/"];
+
+const ROTAS = PERFIL === "cliente" ? ROTAS_PORTAL : ROTAS_EQUIPE;
+const ALVO = PERFIL === "cliente" ? "Portal do Cliente" : "área da equipe";
+
+/**
+ * Faixa completa de dispositivos reais, do celular pequeno ao monitor grande.
+ * 320 é o menor viewport que ainda importa (iPhone SE 1ª geração / Galaxy Fold fechado).
+ */
 const TELAS = [
-  { nome: "desktop", w: 1920, h: 1080 },
-  { nome: "tablet", w: 768, h: 1024 },
-  { nome: "celular", w: 390, h: 844 },
+  { nome: "celular-320", w: 320, h: 568 },
+  { nome: "celular-360", w: 360, h: 800 },
+  { nome: "celular-390", w: 390, h: 844 },
+  { nome: "celular-430", w: 430, h: 932 },
+  { nome: "tablet-768", w: 768, h: 1024 },
+  { nome: "tablet-1024", w: 1024, h: 1366 },
+  { nome: "laptop-1440", w: 1440, h: 900 },
+  { nome: "desktop-1920", w: 1920, h: 1080 },
 ];
 
 /** Valores crus que nunca deveriam chegar à tela. */
@@ -77,9 +100,9 @@ async function entrar(page: Page): Promise<boolean> {
   await page.goto(`${BASE}/login`, { waitUntil: "domcontentloaded" });
   const temForm = await page.locator('input[type="password"]').count();
   if (!temForm) return true; // já autenticado
-  if (!SENHA) return false;
+  if (!SENHA_PERFIL) return false;
   await page.locator('input[type="email"]').fill(EMAIL);
-  await page.locator('input[type="password"]').fill(SENHA);
+  await page.locator('input[type="password"]').fill(SENHA_PERFIL);
   await page.getByRole("button", { name: /entrar/i }).click();
   await page.waitForTimeout(2500);
   return (await page.locator('input[type="password"]').count()) === 0;
@@ -176,7 +199,13 @@ async function main() {
     const page = await ctx.newPage();
 
     if (!(await entrar(page))) {
-      console.error("✗ Não consegui entrar. Rode `pnpm acessos` para ver o motivo.\n");
+      if (PERFIL === "cliente") {
+        console.error(`✗ Não há conta de Portal (${EMAIL}) neste banco.`);
+        console.error("  O Portal só pode ser varrido com um cliente que tenha acesso.");
+        console.error("  Cadastre um cliente e use 'Enviar acesso ao Portal' na ficha dele.\n");
+      } else {
+        console.error("✗ Não consegui entrar. Rode `pnpm acessos` para ver o motivo.\n");
+      }
       process.exit(1);
     }
 

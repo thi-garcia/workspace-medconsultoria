@@ -194,8 +194,9 @@ Verificação técnica da API (opcional): http://localhost:4319/health deve resp
 
 | Comando | O que faz |
 | --- | --- |
-| `pnpm doutor` | **Varre a aplicação inteira num navegador real** (15 rotas × 3 tamanhos de tela) e lista os defeitos encontrados. Somente leitura — não cria, não apaga, não envia e-mail. |
+| `pnpm doutor` | **Varre a área da equipe num navegador real** — 15 rotas × **8 tamanhos de tela** (320px a 1920px) — e lista os defeitos. Somente leitura: não cria, não apaga, não envia e-mail. |
 | `pnpm doutor --perfil admin` | O mesmo, entrando como ADMIN (permissões diferentes) |
+| `pnpm doutor --perfil cliente` | Varre o **Portal do Cliente** (precisa de um cliente com acesso ao Portal) |
 | `pnpm acessos` | Testa o login de cada conta e diz o motivo exato de cada falha |
 | `pnpm verificar:bootstrap` | Ensaio de banco limpo — o que acontecerá em produção |
 
