@@ -23,10 +23,12 @@ test.describe.serial("Cenário 8 — financeiro (ADMIN)", () => {
     await criarConta(page, "A pagar", `${RUN} pagar`, "R$ 800,00");
     await page.goto("/financeiro");
     await page.getByRole("button", { name: "Tudo" }).click();
-    // a receber aparece na visão padrão; a pagar fica na aba "A pagar"
-    await expect(page.getByText(`${RUN} receber`)).toBeVisible();
+    // Confere na TABELA. `getByText` solto casava também com o card "Precisa de você" (a conta
+    // vence em breve), dando strict-mode violation num banco sem outras contas — o painel só
+    // ficava vazio porque, na prática, algum spec anterior já havia enchido o mês.
+    await expect(page.getByRole("row").filter({ hasText: `${RUN} receber` })).toBeVisible();
     await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
-    await expect(page.getByText(`${RUN} pagar`)).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: `${RUN} pagar` })).toBeVisible();
   });
 
   test("CRUD via UI: editar+persistir, marcar paga, filtrar e excluir", async ({ page }) => {

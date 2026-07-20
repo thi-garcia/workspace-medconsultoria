@@ -347,10 +347,23 @@ const ROTEIROS_SERVICO: Record<string, { titulo: string; itens: string[] }[]> = 
   ],
 };
 
+/**
+ * Garante o catálogo canônico da Med.
+ *
+ * Antes isto era tudo-ou-nada (`if (count === 0)`): bastava **um** serviço existir — uma fixture
+ * de teste, ou alguém cadastrando um serviço à mão num banco novo — para os 10 serviços reais
+ * NUNCA serem criados. Num banco de produção recém-nascido isso é perda permanente do catálogo.
+ *
+ * Agora falta a falta: semeia **por nome**, só o que ainda não existe. Nunca sobrescreve o que a
+ * equipe editou e nunca recria o que foi removido de propósito... — exceto que remover um serviço
+ * é `ativo: false` (soft), então o nome continua ocupado e ele não volta.
+ */
 async function seedIfEmpty() {
-  if ((await prisma.servico.count()) === 0) {
+  const existentes = new Set((await prisma.servico.findMany({ select: { nome: true } })).map((s) => s.nome));
+  const faltando = CONTEUDO_SERVICOS.filter((s) => !existentes.has(s.nome));
+  if (faltando.length > 0) {
     await prisma.servico.createMany({
-      data: CONTEUDO_SERVICOS.map((s, i) => ({
+      data: faltando.map((s) => ({
         nome: s.nome,
         categoria: s.categoria,
         valor: s.valor,
@@ -360,7 +373,8 @@ async function seedIfEmpty() {
         descricao: s.descricao,
         roteiro: ROTEIROS_SERVICO[s.nome] ?? undefined,
         clausulasContrato: CLAUSULAS_SERVICOS[s.nome] ?? null,
-        ordem: i,
+        // Mantém a ordem canônica do catálogo, independente do que já houvesse no banco.
+        ordem: CONTEUDO_SERVICOS.findIndex((c) => c.nome === s.nome),
       })),
     });
   }
@@ -372,16 +386,19 @@ async function seedIfEmpty() {
       await prisma.servico.updateMany({ where: { nome, clausulasContrato: null }, data: { clausulasContrato: clausula } });
     }
   }
-  // Semeia os passos padrão dos serviços (uma vez), casando pelo nome.
-  if ((await prisma.servicoPasso.count()) === 0) {
-    const servicos = await prisma.servico.findMany();
-    for (const s of servicos) {
-      const def = CONTEUDO_SERVICOS.find((c) => c.nome === s.nome)?.passos;
-      if (def?.length) {
-        await prisma.servicoPasso.createMany({
-          data: def.map((d, i) => ({ servicoId: s.id, titulo: d.titulo, obrigatorio: d.obrigatorio, etapaChave: d.etapaChave, ordem: i })),
-        });
-      }
+  // Passos padrão, casando pelo nome do serviço. Também POR SERVIÇO, não tudo-ou-nada: com o
+  // guard global (`servicoPasso.count() === 0`), um único passo criado em qualquer serviço
+  // impedia todos os outros de receberem os seus.
+  const semPassos = await prisma.servico.findMany({
+    where: { passos: { none: {} } },
+    select: { id: true, nome: true },
+  });
+  for (const s of semPassos) {
+    const def = CONTEUDO_SERVICOS.find((c) => c.nome === s.nome)?.passos;
+    if (def?.length) {
+      await prisma.servicoPasso.createMany({
+        data: def.map((d, i) => ({ servicoId: s.id, titulo: d.titulo, obrigatorio: d.obrigatorio, etapaChave: d.etapaChave, ordem: i })),
+      });
     }
   }
 }
