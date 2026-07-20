@@ -202,3 +202,42 @@ Enquanto não houver decisão, **a Etapa 3 não é executada**.
 | R2 — funil nasce sem colunas em banco limpo | ✅ **fechado** (PR #21, provado pelo ensaio da Etapa 4) |
 | R3 — E2E local sujando o banco de dev | ✅ **fechado** (PR #22) |
 | Resíduo já existente no banco de dev | ⏳ **aguarda sua decisão** (Etapa 3) |
+
+---
+
+## 6. Etapa 3 — EXECUTADA (2026-07-20), com autorização do dono
+
+Comando **`pnpm db:limpar`** (`scripts/limpar-dados.ts`):
+`pnpm db:limpar` = **dry-run** (só lista) · `pnpm db:limpar --apply` = dump + apaga.
+
+Herda a mesma trava do `demo-seed` (`podeRodarDemoSeed`): **nunca roda contra produção**.
+
+### Resultado real
+
+- **Dump de segurança automático antes de apagar:** `backups/medconsultoria-antes-da-limpeza-*.sql`
+  (932 KB). `backups/` entrou no `.gitignore` — dump pode conter dados reais.
+- **3.282 registros apagados.**
+- **2ª execução: 0 registros** → o script é **idempotente**.
+
+| Depois da limpeza | |
+|---|---:|
+| clientes · leads · projetos · contas · documentos · conversas · eventos | **0** |
+| usuários | **1** (só o ROOT) |
+| serviços reais | 10 |
+| etapas do funil | 5 |
+| modelos de documento | 19 |
+| operadoras · origens | 9 · 9 |
+| categorias da EMPRESA | 5 |
+
+### Verificação ao vivo no navegador (banco limpo)
+
+Login ROOT → **10 páginas** percorridas (Início, Vendas, Clientes, Projetos, Agenda, Mensagens,
+Documentos, Financeiro, Ajustes, Serviços, Modelos): **zero erro de carga, zero overflow**, e
+todas com **estado vazio bem escrito** — "Tudo em dia por aqui", "Nenhuma conversa ainda.
+Clique em + para começar", contadores em 0. Nenhum vestígio de dado de teste.
+
+### Reverter, se preciso
+
+```
+docker exec -i medconsultoria-mysql mysql -uroot -proot < backups/<arquivo>.sql
+```

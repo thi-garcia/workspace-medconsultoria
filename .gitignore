@@ -49,3 +49,6 @@ scripts/.keepalive.pid
 
 # Versão HTML gerada do tracker (marked) — visualização local, não versionar
 AUDITORIA_FUNCIONAL_COMPLETA.html
+
+# Dumps de segurança do banco (podem conter dados reais — nunca versionar)
+backups/
