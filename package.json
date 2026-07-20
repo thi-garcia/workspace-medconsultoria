@@ -18,6 +18,7 @@
     "test": "turbo run test",
     "test:e2e": "playwright test",
     "test:e2e:isolado": "node scripts/e2e-isolado.mjs",
+    "verificar:bootstrap": "node scripts/verificar-bootstrap.mjs",
     "db:generate": "pnpm --filter @app/db generate",
     "db:migrate": "pnpm --filter @app/db migrate",
     "db:seed": "pnpm --filter @app/db seed",

@@ -146,12 +146,26 @@ Garantias obrigatórias do script:
 > Impacto: apaga dados de teste do banco **de desenvolvimento**. Nunca é apontado para
 > produção (herda a mesma trava da Etapa 1).
 
-### Etapa 4 — Bootstrap de banco limpo (**não destrutivo**, cria do zero)
+### Etapa 4 — Bootstrap de banco limpo ✅ **EXECUTADA** (não destrutiva)
 
-`docs/BOOTSTRAP.md` + verificação prática: subir um banco vazio, rodar
-`migrate deploy` + `db:seed`, e confirmar que a aplicação abre utilizável (login ROOT,
-funil com colunas, menus funcionais) **sem nenhum dado fictício**. É o ensaio do que
-será feito quando o banco de produção existir.
+Comando **`pnpm verificar:bootstrap`** (`scripts/verificar-bootstrap.mjs`): cria um banco
+vazio (`medconsultoria_bootstrap`), aplica **apenas** `migrate deploy` + `db:seed`
+(**sem nenhum `db:demo`** — exatamente o que produção fará), sobe o app contra ele e
+verifica por **HTTP real**. É o ensaio do que acontecerá quando o banco de produção existir.
+
+**Resultado — 10/10 verificações:**
+
+```
+✓ login do ROOT funciona — HTTP 200
+✓ funil de Vendas nasce com as 5 etapas — 5 etapas      ← regressão do R2
+✓ página Vendas responde autenticada — HTTP 200
+✓ sem dado fictício em Cliente/Lead/Projeto/Conta/Documento/Conversa — 0 registros
+✓ apenas o usuário ROOT existe — 1 usuários
+✓ banco limpo abre UTILIZÁVEL e VAZIO — ensaio de produção aprovado.
+```
+
+A senha do ROOT vem do `.env` e **nunca é impressa**. O `.env`, o banco de desenvolvimento
+e o banco de E2E **não são tocados** — o ensaio usa banco e portas próprios (4420/4429).
 
 ---
 
@@ -168,10 +182,23 @@ será feito quando o banco de produção existir.
 
 ## 4. Decisão que eu preciso de você
 
+As Etapas **1, 2 e 4 já foram executadas** — todas não destrutivas, nenhum registro apagado.
+Falta só a **Etapa 3** (`db:demo:clean`), que é a única que apaga dados:
+
 | Opção | O que executo |
 |---|---|
-| **A — Só blindar** | Etapas 1 e 2. Zero exclusão. O banco atual fica como está, mas para de piorar. |
-| **B — Blindar + limpar** (recomendado) | Etapas 1, 2, 3 e 4. Banco de dev limpo, com dump de segurança antes. |
-| **C — Adiar** | Nada. Sigo para o Bloco 6 / outras frentes. |
+| **A — Parar por aqui** | Nada mais. O banco de dev fica sujo como está, mas **não piora mais** (Etapa 2 impede). |
+| **B — Executar a Etapa 3** (recomendado) | Crio o `db:demo:clean` com dry-run + dump automático, mostro a lista do que seria apagado, e só então aplico. |
 
-Enquanto não houver decisão, **nada é executado**.
+Enquanto não houver decisão, **a Etapa 3 não é executada**.
+
+---
+
+## 5. Situação atual (2026-07-20)
+
+| Risco | Status |
+|---|---|
+| R1 — `demo-seed` sem trava de produção | ✅ **fechado** (PR #21) |
+| R2 — funil nasce sem colunas em banco limpo | ✅ **fechado** (PR #21, provado pelo ensaio da Etapa 4) |
+| R3 — E2E local sujando o banco de dev | ✅ **fechado** (PR #22) |
+| Resíduo já existente no banco de dev | ⏳ **aguarda sua decisão** (Etapa 3) |
