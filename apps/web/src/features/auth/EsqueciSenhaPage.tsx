@@ -6,6 +6,7 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { sincronizarAutofill } from "../../lib/form-autofill";
 import { AuthShell } from "./AuthShell";
 
 export function EsqueciSenhaPage() {
@@ -13,6 +14,7 @@ export function EsqueciSenhaPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<SolicitarResetInput>({ resolver: zodResolver(solicitarResetSchema) });
 
@@ -48,7 +50,15 @@ export function EsqueciSenhaPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit((d) => solicitar.mutate(d))} className="space-y-5" noValidate>
+      <form
+        onSubmit={(e) => {
+          // Autofill escreve no DOM sem disparar o evento que o react-hook-form escuta.
+          sincronizarAutofill(e, setValue, ["email"]);
+          void handleSubmit((d) => solicitar.mutate(d))(e);
+        }}
+        className="space-y-5"
+        noValidate
+      >
         <div className="space-y-1.5">
           <Label htmlFor="email">E-mail</Label>
           <div className="relative">

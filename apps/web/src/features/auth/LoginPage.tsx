@@ -7,6 +7,7 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { sincronizarAutofill } from "../../lib/form-autofill";
 import { AuthShell } from "./AuthShell";
 
 export function LoginPage() {
@@ -28,8 +29,14 @@ export function LoginPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
+
+  const enviar = handleSubmit((data) => {
+    setEmailTentado(data.email);
+    login.mutate(data);
+  });
 
   return (
     <AuthShell>
@@ -41,10 +48,13 @@ export function LoginPage() {
       </div>
 
       <form
-        onSubmit={handleSubmit((data) => {
-          setEmailTentado(data.email);
-          login.mutate(data);
-        })}
+        onSubmit={(e) => {
+          // O autofill do Chrome escreve no DOM sem disparar o evento que o react-hook-form
+          // escuta: sem isto, o formulário envia o que o React lembrava (vazio → "E-mail
+          // inválido", ou uma conta antiga) em vez do que está na tela.
+          sincronizarAutofill(e, setValue, ["email", "password"]);
+          void enviar(e);
+        }}
         className="space-y-5"
         noValidate
       >

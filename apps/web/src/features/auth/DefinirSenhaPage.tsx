@@ -7,6 +7,7 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { sincronizarAutofill } from "../../lib/form-autofill";
 import { AuthShell } from "./AuthShell";
 
 export function DefinirSenhaPage() {
@@ -24,6 +25,7 @@ export function DefinirSenhaPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<AceitarConviteInput>({
     resolver: zodResolver(aceitarConviteSchema),
@@ -79,7 +81,15 @@ export function DefinirSenhaPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit((data) => aceitar.mutate(data))} className="space-y-5" noValidate>
+      <form
+        onSubmit={(e) => {
+          // Gerenciador de senhas autopreenche sem disparar o evento que o RHF escuta.
+          sincronizarAutofill(e, setValue, ["novaSenha", "confirmar"]);
+          void handleSubmit((data) => aceitar.mutate(data))(e);
+        }}
+        className="space-y-5"
+        noValidate
+      >
         <input type="hidden" {...register("token")} />
 
         <div className="space-y-1.5">
