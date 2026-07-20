@@ -7,6 +7,7 @@ import { trpc } from "../../lib/trpc";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import { Label } from "../../components/ui/label";
+import { sincronizarAutofill } from "../../lib/form-autofill";
 import { AuthShell } from "./AuthShell";
 
 export function RedefinirSenhaPage() {
@@ -24,6 +25,7 @@ export function RedefinirSenhaPage() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors },
   } = useForm<RedefinirSenhaInput>({
     resolver: zodResolver(redefinirSenhaSchema),
@@ -77,7 +79,15 @@ export function RedefinirSenhaPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit((data) => redefinir.mutate(data))} className="space-y-5" noValidate>
+      <form
+        onSubmit={(e) => {
+          // Gerenciador de senhas autopreenche sem disparar o evento que o RHF escuta.
+          sincronizarAutofill(e, setValue, ["novaSenha", "confirmar"]);
+          void handleSubmit((data) => redefinir.mutate(data))(e);
+        }}
+        className="space-y-5"
+        noValidate
+      >
         <input type="hidden" {...register("token")} />
 
         <div className="space-y-1.5">

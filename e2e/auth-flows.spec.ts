@@ -28,6 +28,35 @@ test.describe("Auth — login inválido", () => {
 // Trocar de conta: `/login` com sessão ativa REDIRECIONAVA em silêncio para o painel. Quem já
 // estava logado nunca via o formulário — voltava ao painel ainda como o usuário anterior e
 // concluía que a segunda conta não funcionava. Foi o que travou o dono em 20/07/2026.
+// BUG-008: o autofill do Chrome escreve o valor direto no DOM SEM disparar o evento que o
+// react-hook-form escuta. O formulário enviava o que o React lembrava — vazio ("E-mail
+// inválido") ou uma conta antiga — enquanto a tela mostrava o e-mail certo. Deixou o dono
+// sem conseguir entrar nem como ROOT nem como ADMIN.
+test.describe("Auth — autofill do navegador", () => {
+  for (const conta of ["root@medconsultoria.com.br", "thais.garcia@medconsultoria.com.br"]) {
+    test(`entra quando o navegador autopreenche (sem evento de input) — ${conta}`, async ({ page }) => {
+      await page.goto("/login");
+      await expect(page.locator('input[type="password"]')).toBeVisible();
+
+      // Reproduz o autofill: setter nativo, sem `dispatchEvent`. É o que o Chrome faz.
+      await page.evaluate(
+        ([email, senha]) => {
+          const nativo = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!;
+          nativo.call(document.querySelector("#email"), email);
+          nativo.call(document.querySelector('input[type="password"]'), senha);
+        },
+        [conta, PASS],
+      );
+
+      await page.getByRole("button", { name: /entrar/i }).click();
+
+      // Entrou de verdade: o formulário sumiu e não há alerta de erro.
+      await expect(page.locator('input[type="password"]')).toHaveCount(0, { timeout: 15000 });
+      await expect(page.getByRole("alert")).toHaveCount(0);
+    });
+  }
+});
+
 test.describe("Auth — trocar de conta", () => {
   // NÃO reutiliza `admin.json` (mesma razão do bloco de logout abaixo): estes testes DESLOGAM,
   // e derrubar a sessão compartilhada trava toda a suíte. Cada teste faz o próprio login.

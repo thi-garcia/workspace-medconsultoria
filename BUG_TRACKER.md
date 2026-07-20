@@ -169,3 +169,32 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
 - **Regressão:** `e2e/auth-flows.spec.ts` — `/login` autenticado não pode redirecionar, precisa
   identificar o usuário, e o fluxo completo (trocar → entrar → painel) é exercido ponta a ponta.
 - **Revalidação manual:** ao vivo, ADMIN → "Entrar com outra conta" → ROOT → painel; e o inverso.
+
+---
+
+## BUG-008 — Login enviava o que o React lembrava, não o que estava na tela (autofill)
+- **Status:** 🟢 corrigido
+- **Severidade:** **CRÍTICA** — impedia o login de **todas** as contas
+- **Módulo/rota:** `/login` e demais formulários de autenticação
+- **Relato do dono:** *"não está entrando nem admin e nem root (mensagem diz: E-mail inválido)"*
+- **Reprodução (provada ao vivo):**
+  1. Abrir `/login` com credenciais salvas no navegador.
+  2. O Chrome autopreenche escrevendo **direto no DOM**, sem disparar o evento de input.
+  3. Clicar **Entrar** com os campos **visivelmente corretos** na tela.
+  4. Resultado: **"E-mail inválido"** (React tinha string vazia) ou **"E-mail ou senha
+     incorretos"** com o e-mail de uma tentativa anterior.
+- **Prova:** simulando o autofill (setter nativo, sem `dispatchEvent`), o campo mostrava
+  `root@medconsultoria.com.br` e o formulário **enviou `cliente@medconsultoria.com.br`** —
+  o valor que o `react-hook-form` guardava.
+- **Causa:** o `react-hook-form` monta seu estado a partir dos eventos de input. O autofill do
+  Chrome não os dispara, então o estado do React e o DOM divergem — e o `handleSubmit` valida e
+  envia o **estado**, não a tela.
+- **Solução:** helper `apps/web/src/lib/form-autofill.ts::sincronizarAutofill(evento, setValue,
+  campos)`, chamado no `onSubmit` **antes** do `handleSubmit`: lê os inputs pelo `name` dentro do
+  próprio formulário e reconcilia o estado com o DOM. Aplicado em **Login**, **Esqueci minha
+  senha**, **Definir senha** (convite) e **Redefinir senha** — todos com campos que o navegador
+  autopreenche.
+- **Regressão:** `e2e/auth-flows.spec.ts` — dois testes que reproduzem o autofill (setter nativo,
+  sem evento) para ROOT e ADMIN e exigem que o login **conclua sem alerta**.
+- **Revalidação manual:** ao vivo, mesma simulação → entra como **Root (ROOT)** e como
+  **Thaís Garcia (ADMIN)**, caindo no painel.
