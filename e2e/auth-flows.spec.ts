@@ -25,6 +25,39 @@ test.describe("Auth — login inválido", () => {
   });
 });
 
+// Trocar de conta: `/login` com sessão ativa REDIRECIONAVA em silêncio para o painel. Quem já
+// estava logado nunca via o formulário — voltava ao painel ainda como o usuário anterior e
+// concluía que a segunda conta não funcionava. Foi o que travou o dono em 20/07/2026.
+test.describe("Auth — trocar de conta", () => {
+  test.use({ storageState: "e2e/.auth/admin.json" });
+
+  test("/login com sessão ativa mostra quem está conectado, não redireciona calado", async ({ page }) => {
+    await page.goto("/login");
+    await expect(page.getByRole("heading", { name: /Você já está conectado/i })).toBeVisible();
+    // Precisa dizer QUEM — é o que se confere ao trocar de conta.
+    await expect(page.getByText(/@medconsultoria\.com\.br/)).toBeVisible();
+    await expect(page.getByRole("button", { name: /Entrar com outra conta/i })).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/); // não foi expulso para "/"
+  });
+
+  test("'Entrar com outra conta' devolve o formulário e o login leva ao painel", async ({ page }) => {
+    await page.goto("/login");
+    await page.getByRole("button", { name: /Entrar com outra conta/i }).click();
+
+    // Voltou ao formulário de verdade.
+    const senha = page.locator('input[type="password"]');
+    await expect(senha).toBeVisible();
+
+    await page.locator('input[type="email"]').fill("root@medconsultoria.com.br");
+    await senha.fill(PASS);
+    await page.getByRole("button", { name: /entrar/i }).click();
+
+    // Cai no painel — e NÃO de volta em "Você já está conectado".
+    await expect(page).toHaveURL(/\/$/);
+    await expect(page.getByRole("heading", { name: /Você já está conectado/i })).toHaveCount(0);
+  });
+});
+
 test.describe("Auth — logout", () => {
   // NÃO reutiliza a sessão compartilhada (admin.json): faz login PRÓPRIO para não invalidar
   // a sessão usada pelos outros testes ao deslogar (isolamento).
