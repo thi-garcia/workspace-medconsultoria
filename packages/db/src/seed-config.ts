@@ -11,3 +11,22 @@ export const STAGE_DEFAULTS = [
   { nome: "Negociação", ordem: 3, cor: "#F59E0B" },
   { nome: "Fechado", ordem: 4, cor: "#30AD73" },
 ];
+
+/**
+ * CONTAS REAIS DA EQUIPE — pessoas de verdade da MedConsultoria, não dados de exemplo.
+ *
+ * Diferente dos usuários fictícios do `demo-seed` ("Funcionário Exemplo"): estas contas
+ * são as documentadas em `docs/ACESSOS.md` e precisam **sobreviver à limpeza de dados**.
+ * A senha vem do ambiente (`SEED_ROOT_PASSWORD`) — nunca fica no repositório.
+ *
+ * O seed só CRIA quem não existe: nunca sobrescreve a senha de uma conta já em uso.
+ */
+export const EQUIPE_REAL = [
+  { chaveEmail: "SEED_ROOT_EMAIL", emailPadrao: "root@medconsultoria.com.br", nome: "Root", role: "ROOT" as const },
+  {
+    chaveEmail: "SEED_ADMIN_EMAIL",
+    emailPadrao: "thais.garcia@medconsultoria.com.br",
+    nome: "Thaís Garcia",
+    role: "ADMIN" as const,
+  },
+];
