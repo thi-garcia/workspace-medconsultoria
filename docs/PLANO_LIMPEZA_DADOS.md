@@ -76,7 +76,7 @@ Os chamados e serviços de teste aparecem na interface do Portal do cliente. Hoj
 
 ## 2. Plano proposto — 4 etapas, da mais segura à destrutiva
 
-### Etapa 1 — Blindagem (**não destrutiva**, faço já se autorizar)
+### Etapa 1 — Blindagem ✅ **EXECUTADA** (não destrutiva)
 
 1. **Trava de produção no `demo-seed.ts`**: aborta se `NODE_ENV=production` ou se a
    `DATABASE_URL` não for reconhecidamente local/CI, exigindo `DEMO_SEED_CONFIRMO=1`
@@ -88,6 +88,18 @@ Os chamados e serviços de teste aparecem na interface do Portal do cliente. Hoj
 3. Teste automatizado cobrindo as duas travas.
 
 > Impacto: **zero registro apagado**. Só código + testes.
+
+**Resultado (verificado ao vivo):**
+
+| Verificação | Resultado |
+|---|---|
+| `pnpm db:demo` com `DATABASE_URL` remota | 🚫 `demo-seed BLOQUEADO: banco remoto (…)` |
+| `pnpm db:demo` com `NODE_ENV=production` | 🚫 `demo-seed BLOQUEADO: NODE_ENV=production` |
+| `pnpm db:seed` local (2ª vez) | ✅ `Usuário ROOT pronto` + `Etapas do funil já existem (5) — mantidas` |
+| Testes | ✅ 7 novos (`seed-guard.test.ts`); suíte da API 58/58 |
+
+Código: `packages/db/src/seed-guard.ts` (função pura `podeRodarDemoSeed`) e
+`packages/db/src/seed-config.ts` (`STAGE_DEFAULTS`), exportados por `@app/db`.
 
 ### Etapa 2 — Banco de teste próprio para o E2E local (**não destrutiva**)
 

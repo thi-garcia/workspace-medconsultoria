@@ -2,6 +2,7 @@ import { config } from "dotenv";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
+import { STAGE_DEFAULTS } from "../src/seed-config";
 
 // Carrega o .env da raiz do monorepo.
 config({ path: resolve(process.cwd(), "../../.env") });
@@ -26,6 +27,16 @@ async function main() {
   });
 
   console.log(`✔ Usuário ROOT pronto: ${user.email}`);
+
+  // Etapas do funil = CONFIG ESSENCIAL (sem elas a página Vendas nasce sem colunas).
+  // Idempotente: só semeia se o pipeline estiver vazio; nunca mexe em etapas já criadas.
+  const stages = await prisma.pipelineStage.count();
+  if (stages === 0) {
+    await prisma.pipelineStage.createMany({ data: STAGE_DEFAULTS });
+    console.log(`✔ Etapas do funil criadas: ${STAGE_DEFAULTS.map((s) => s.nome).join(" → ")}`);
+  } else {
+    console.log(`• Etapas do funil já existem (${stages}) — mantidas.`);
+  }
 }
 
 main()

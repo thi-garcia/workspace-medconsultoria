@@ -2,21 +2,21 @@ import { config } from "dotenv";
 import { resolve } from "node:path";
 import { PrismaClient } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
+import { podeRodarDemoSeed } from "../src/seed-guard";
+import { STAGE_DEFAULTS } from "../src/seed-config";
 
 // Dados de EXEMPLO para acompanhar a aplicação ao vivo. Idempotente.
 // Rodar: pnpm db:demo
 config({ path: resolve(process.cwd(), "../../.env") });
 const prisma = new PrismaClient();
 
-const STAGE_DEFAULTS = [
-  { nome: "Novo", ordem: 0, cor: "#2DA8E1" },
-  { nome: "Qualificação", ordem: 1, cor: "#003591" },
-  { nome: "Proposta", ordem: 2, cor: "#30AD73" },
-  { nome: "Negociação", ordem: 3, cor: "#F59E0B" },
-  { nome: "Fechado", ordem: 4, cor: "#30AD73" },
-];
-
 async function main() {
+  const guard = podeRodarDemoSeed(process.env);
+  if (!guard.permitido) {
+    throw new Error(`demo-seed BLOQUEADO: ${guard.motivo}`);
+  }
+  console.log(`• demo-seed liberado: ${guard.motivo}`);
+
   const root = await prisma.user.findFirst({ where: { role: "ROOT" } });
 
   // Usuários de exemplo (senha: medconsultoria123) para testar mensagens/atribuições.
