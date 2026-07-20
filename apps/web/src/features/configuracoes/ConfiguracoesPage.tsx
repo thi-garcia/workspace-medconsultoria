@@ -330,7 +330,13 @@ export function ConfiguracoesPage() {
   const podeGerirEquipe = hasRoleLevel(user.role, "ADMIN");
 
   // Garante que a página abra no topo.
-  useEffect(() => window.scrollTo(0, 0), []);
+  // Corpo em BLOCO de propósito: `useEffect(() => window.scrollTo(0, 0), [])` devolve
+  // implicitamente o retorno de `scrollTo`, que nos Chrome atuais é uma **Promise**. O React
+  // trata esse retorno como a função de limpeza e quebra com "destroy is not a function" —
+  // derrubando a página inteira. Efeito não pode retornar nada além de uma função.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
 
   return (
     <div className="space-y-6">

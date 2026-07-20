@@ -328,9 +328,12 @@ export function AppLayout() {
   });
   const pageTitle = usePageTitle();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  // Título da aba do navegador acompanha a página.
+  // Título da aba do navegador acompanha a página. O Início e as rotas sem título próprio
+  // (ex.: 404, cujo fallback já é "MedConsultoria") ficam só com a marca — senão a aba
+  // mostrava "MedConsultoria · MedConsultoria".
   useEffect(() => {
-    document.title = pageTitle === "Início" ? "MedConsultoria" : `${pageTitle} · MedConsultoria`;
+    const semTituloProprio = pageTitle === "Início" || pageTitle === "MedConsultoria";
+    document.title = semTituloProprio ? "MedConsultoria" : `${pageTitle} · MedConsultoria`;
   }, [pageTitle]);
   const ia = trpc.ia.disponivel.useQuery(undefined, { staleTime: 60_000 });
   const buscaPlaceholder = ia.data?.disponivel
