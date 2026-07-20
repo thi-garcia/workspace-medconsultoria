@@ -4,7 +4,9 @@ import { lerFixtures } from "./fixtures-helper";
 // Cenário 3 — Documentos/arquivos: upload/download via HTTP REAL (não só service),
 // validação de tipo/tamanho e isolamento de acesso entre clientes (CLIENTE não baixa de outro).
 // clienteIds vêm da fixture (variam a cada seed).
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 
 const PDF = Buffer.from("%PDF-1.4\n1 0 obj<< /Type /Catalog >>endobj\ntrailer<< >>\n%%EOF\n");
 
