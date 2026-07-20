@@ -95,10 +95,38 @@ const ACAO_LABEL: Record<string, string> = {
   "documento.enviado": "enviou um documento",
   "documento.ia_gerado": "gerou um documento com IA",
   "documento.ia_ata": "gerou uma ata com IA",
+  "documento.ia_pauta": "gerou uma pauta com IA",
   "documento.proposta_gerado": "gerou uma proposta",
+  "documento.proposta_gerada": "gerou uma proposta",
+  "documento.proposta_auto": "gerou uma proposta automaticamente",
   "documento.contrato_gerado": "gerou um contrato",
+  "documento.contrato_auto": "gerou um contrato automaticamente",
   "documento.briefing_gerado": "gerou um briefing",
+  "documento.assinado": "assinou um documento",
+  "documento.assinatura_solicitada": "solicitou a assinatura de um documento",
+  "proposta.aceite_habilitado": "liberou o aceite online de uma proposta",
+  "arquivo.removido": "removeu um arquivo",
+  "cliente.dados_atualizados_portal": "atualizou os próprios dados pelo Portal",
+  "cliente.excluido_definitivo": "excluiu um cliente definitivamente",
+  "servico.contratado": "contratou um serviço",
+  "servico.cancelado": "cancelou um serviço",
+  "servico.sincronizado_aceite": "sincronizou os serviços após o aceite",
+  "lead.servicos_portal": "escolheu serviços pelo Portal",
+  login: "entrou no sistema",
 };
+
+/**
+ * Frase da atividade. O fallback antigo (trocar `.`/`_` por espaço) produzia texto sem verbo
+ * — "Thaís arquivo removido". Documentos gerados por modelo têm a ação montada em tempo de
+ * execução (`documento.<tipo>_gerado`), então não dá para listar todos: o padrão cobre o resto.
+ */
+export function acaoLabel(acao: string): string {
+  const conhecida = ACAO_LABEL[acao];
+  if (conhecida) return conhecida;
+  const tipo = acao.match(/^documento\.(.+)_gerad[oa]$/)?.[1];
+  if (tipo) return `gerou um documento (${tipo.replace(/_/g, " ")})`;
+  return `registrou: ${acao.replace(/[._]/g, " ")}`;
+}
 
 const startOfToday = () => {
   const d = new Date();
@@ -875,7 +903,7 @@ export function DashboardPage() {
                   </span>
                   <div className="min-w-0 flex-1">
                     <div className="truncate">
-                      <span className="font-medium">{ator}</span> <span className="text-muted-foreground">{ACAO_LABEL[a.acao] ?? a.acao.replace(/[._]/g, " ")}</span>
+                      <span className="font-medium">{ator}</span> <span className="text-muted-foreground">{acaoLabel(a.acao)}</span>
                     </div>
                   </div>
                   <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">

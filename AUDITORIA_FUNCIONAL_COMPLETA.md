@@ -427,3 +427,36 @@ Registradas neste documento (seção Bloco 3) e no `BUG_TRACKER.md`; regressões
 
 ### VEREDITO
 **Aplicação FUNCIONALMENTE VALIDADA, com uma ressalva.** Os 4 perfis, os 4 viewports, os principais módulos e **3 jornadas de negócio ponta a ponta** foram exercidos ao vivo no navegador (não só por testes); 2 bugs reais foram encontrados e corrigidos com regressão; **0 bugs abertos**; CI real verde. **Ressalva única:** o conteúdo do painel **Sistema (ROOT)** depende de login ROOT (senha real) para percorrer ao vivo — o acesso/bloqueio já está validado. Recomenda-se, antes do "pronto para produção", a limpeza dos dados de teste (Bloco 5) e o fornecimento do conteúdo real (§7.2).
+
+---
+
+## 🩺 Sistema (painel ROOT) — validado AO VIVO (2026-07-20) — ressalva do Bloco 3 FECHADA
+
+A senha do ROOT estava documentada em `docs/ACESSOS.md`. Com ela, o painel foi percorrido
+de verdade no navegador (não só o bloqueio de acesso, que já estava validado).
+
+**Login ROOT:** `root@medconsultoria.com.br` → entrou; o item **Sistema** apareceu no menu
+(não aparece para a ADMIN — confirma o RBAC só-ROOT na prática, dos dois lados).
+
+**As 8 abas, todas com dados reais e sem erro de carga (overflow horizontal = 0 em 1920):**
+
+| Aba | O que renderizou ao vivo |
+|---|---|
+| Visão geral | "Todos os sistemas operacionais" · uptime · 5 indicadores (banco, event loop, jobs, taxa de erro, tempo real) · "Precisa de atenção" |
+| Incidentes | Uptime 90 dias (91,1%) + histórico de incidentes com severidade e duração |
+| Desempenho | RED ao vivo: requisições, taxa de erro 0%, event loop p99 16,3ms, CPU, heap 38MB, RSS |
+| Banco | Conexão online 1ms · uptime MySQL · 3,51 MB / 45 tabelas · uso de conexões 17/151 · tabelas por tamanho |
+| Erros | 2 erros abertos com stack trace e contagem de ocorrências |
+| Sessões | Tabela usuário/papel/dispositivo/IP/início/expiração — a própria sessão ROOT listada |
+| Atividade | Log de auditoria (login, documento.*, arquivo.removido…) |
+| Manutenção | Limpeza de sessões expiradas · configuração (ambiente, porta, origem, IA, CSP) · 40 migrações |
+
+**Ações exercidas de verdade (não só leitura):**
+- **"Rodar varredura"** — executou sem erro.
+- **"Resolver"** num erro — a lista foi de **"2 aberto(s)" → "1 aberto(s)"** e persistiu. ✅
+
+**Veredito:** **APROVADO**. A única ressalva do Bloco 3 está **fechada** — nenhum módulo
+permanece com ressalva por falta de credencial.
+
+**Bug encontrado durante esta passagem:** BUG-003 (frases sem verbo na "Atividade recente"),
+corrigido e revalidado ao vivo — ver `BUG_TRACKER.md`.
