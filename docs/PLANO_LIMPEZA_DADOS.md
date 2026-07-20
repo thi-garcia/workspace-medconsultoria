@@ -101,14 +101,29 @@ Os chamados e serviços de teste aparecem na interface do Portal do cliente. Hoj
 Código: `packages/db/src/seed-guard.ts` (função pura `podeRodarDemoSeed`) e
 `packages/db/src/seed-config.ts` (`STAGE_DEFAULTS`), exportados por `@app/db`.
 
-### Etapa 2 — Banco de teste próprio para o E2E local (**não destrutiva**)
+### Etapa 2 — Banco de teste próprio para o E2E local ✅ **EXECUTADA** (não destrutiva)
 
-Passar a suíte E2E local a rodar contra `medconsultoria_e2e` (banco separado, mesmo
-servidor MySQL 3307), como já acontece com o Vitest. A partir daí **o seu banco de
-desenvolvimento para de sujar sozinho**. Resolve **R3** na raiz, sem depender de os
-specs se comportarem.
+Novo comando **`pnpm test:e2e:isolado`** (`scripts/e2e-isolado.mjs`): sobe uma **segunda
+instância** do app (web 4410 / api 4419) apontada para o banco **`medconsultoria_e2e`**,
+roda o Playwright contra ela e derruba tudo no fim. O `pnpm dev` de sempre (4310/4319,
+banco de desenvolvimento) continua no ar, intocado.
 
-> Impacto: **zero registro apagado**. Novo banco criado do zero via `migrate deploy`.
+O script **nunca escreve no `.env`** — passa tudo por variável de ambiente aos processos
+filhos (o `dotenv` do app não sobrescreve o que já está em `process.env`).
+
+**Prova de isolamento (execução real):**
+
+| Medida | Antes | Depois |
+|---|---:|---:|
+| `Servico` com `E2E`/`Guard` no **banco de dev** | 11 | **11** (inalterado) |
+| `Servico` com `E2E`/`Guard` no **banco `medconsultoria_e2e`** | — | 3 |
+| Resultado do Playwright | — | `passed` |
+
+Antes desta etapa, a mesma execução teria somado +2 serviços ao banco de desenvolvimento.
+Resolve **R3** na raiz — não depende de os specs se comportarem.
+
+> Impacto: **zero registro apagado**. Banco `medconsultoria_e2e` criado do zero via
+> `migrate deploy` (`CREATE DATABASE IF NOT EXISTS` — nunca dropa nada).
 
 ### Etapa 3 — `db:demo:clean` (**destrutiva, escopo fechado e reversível**)
 
