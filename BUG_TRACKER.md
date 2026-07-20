@@ -198,3 +198,34 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
   sem evento) para ROOT e ADMIN e exigem que o login **conclua sem alerta**.
 - **Revalidação manual:** ao vivo, mesma simulação → entra como **Root (ROOT)** e como
   **Thaís Garcia (ADMIN)**, caindo no painel.
+
+---
+
+## BUG-009 — Catálogo de serviços podia nunca ser criado (seed tudo-ou-nada)
+- **Status:** 🟢 corrigido
+- **Severidade:** **ALTA** em banco novo — o catálogo real da Med simplesmente não apareceria
+- **Módulo:** `apps/api/src/modules/servicos/servicos.service.ts::seedIfEmpty`
+- **Reprodução:** num banco recém-criado, criar **um** serviço qualquer (à mão, ou por uma
+  fixture de teste) **antes** de abrir a página Serviços. Os 10 serviços canônicos nunca são
+  semeados — o catálogo fica só com aquele um, para sempre.
+- **Causa:** `if ((await prisma.servico.count()) === 0)`. Um único registro pré-existente
+  desligava o seed inteiro. O mesmo padrão estava nos passos
+  (`if ((await prisma.servicoPasso.count()) === 0)`): um passo em qualquer serviço impedia
+  **todos** os outros de receberem os seus.
+- **Impacto real:** foi assim que a suíte E2E, num banco novo, ficou com **3 serviços** (só os
+  criados pelos próprios testes) e o formulário "Novo lead" não tinha "Gestão Operacional".
+  Em produção, bastaria a Thaís cadastrar um serviço antes de abrir a tela.
+- **Solução:** semear **por nome**, só o que falta (mesmo padrão já usado nos modelos de
+  documento). Passos idem, por serviço: `where: { passos: { none: {} } }`. Nunca sobrescreve o
+  que foi editado.
+- **Regressão:** a suíte completa no banco isolado passou de **13 → 0 falhas** (74/74).
+
+---
+
+## BUG-010 — Asserção ambígua no teste do Financeiro
+- **Status:** 🟢 corrigido (teste)
+- **Módulo:** `e2e/flows-financeiro.spec.ts`
+- **Causa:** `getByText("<conta>")` casava com **dois** elementos — o card "Precisa de você"
+  (a conta vence em breve) e a linha da tabela. Num banco com dados de execuções anteriores o
+  painel já estava cheio e o caso não aparecia; num banco novo, dava strict-mode violation.
+- **Solução:** asserção escopada na linha da tabela (`getByRole("row").filter(...)`).
