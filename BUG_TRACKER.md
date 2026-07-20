@@ -110,3 +110,33 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
 - **Solução:** tratar também o fallback como "sem título próprio" → a aba fica só `MedConsultoria`.
 - **Regressão:** `e2e/flows-erros-ux.spec.ts` — `await expect(page).toHaveTitle("MedConsultoria")`
   no teste de rota inexistente.
+
+---
+
+## BUG-006 — Login: erro não revelava que o navegador havia preenchido outra conta
+- **Status:** 🟢 corrigido
+- **Severidade:** média (bloqueia o acesso na prática, embora a autenticação esteja correta)
+- **Módulo/rota:** `/login` — `apps/web/src/features/auth/LoginPage.tsx`
+- **Relato do dono:** *"Os acessos root e admin não estão funcionando."*
+- **Reprodução:**
+  1. Ter uma conta antiga salva no gerenciador de senhas do navegador (aqui:
+     `cliente@medconsultoria.com.br`, removida pela limpeza de 20/07).
+  2. Abrir `/login` — o Chrome **autopreenche** e-mail e senha dessa conta.
+  3. Clicar **Entrar** sem reparar no campo → **"E-mail ou senha incorretos"**.
+  4. A pessoa jura que digitou o e-mail certo e conclui que "o acesso não funciona".
+- **Diagnóstico:** a autenticação **estava correta** o tempo todo — verificado por três caminhos:
+  API direta (`/trpc/auth.login` → 200 para ROOT e ADMIN), pelo proxy do front (200 + `Set-Cookie`)
+  e pelo **formulário no navegador** (ROOT caiu em "Boa tarde, Root 👋" com o menu Sistema).
+  Também descartado throttle de brute-force (é por IP+e-mail, e o contador zera no restart).
+- **Causa da confusão:** a mensagem de erro não dizia **qual e-mail** foi enviado. Como o campo
+  autopreenchido não chama atenção, não havia como perceber a troca.
+- **Solução (2 frentes):**
+  1. o erro passa a mostrar o e-mail tentado — *"Tentamos entrar com `X` — confira se é mesmo o
+     seu e-mail (o navegador pode ter preenchido outro)"*;
+  2. novo comando **`pnpm acessos`** (`scripts/verificar-acessos.ts`): testa o login real de cada
+     conta contra a API no ar e imprime o motivo exato de cada falha (inativa, sem senha, senha
+     trocada, bloqueio por tentativas).
+- **Regressão:** `e2e/auth-flows.spec.ts` — o alerta precisa conter o e-mail tentado e o aviso
+  sobre o navegador.
+- **Nota:** não há credencial fixa no código do login (`useForm` sem `defaultValues`); o
+  preenchimento vem 100% do gerenciador de senhas do navegador.

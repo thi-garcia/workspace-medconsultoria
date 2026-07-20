@@ -20,6 +20,7 @@
     "test:e2e:isolado": "node scripts/e2e-isolado.mjs",
     "verificar:bootstrap": "node scripts/verificar-bootstrap.mjs",
     "db:limpar": "tsx scripts/limpar-dados.ts",
+    "acessos": "tsx scripts/verificar-acessos.ts",
     "db:generate": "pnpm --filter @app/db generate",
     "db:migrate": "pnpm --filter @app/db migrate",
     "db:seed": "pnpm --filter @app/db seed",

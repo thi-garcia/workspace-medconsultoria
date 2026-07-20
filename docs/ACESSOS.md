@@ -31,6 +31,16 @@ os usuários fictícios. Crie-os pelo fluxo real da aplicação:
 - **funcionário** → **Ajustes → Equipe e acessos → convidar** (o convite chega por e-mail);
 - **cliente** → cadastre o cliente e use **"Enviar acesso ao Portal"** na ficha dele.
 
+### ❓ Não está conseguindo entrar?
+
+Rode **`pnpm acessos`**. Ele testa o login de cada conta contra a aplicação no ar e diz o
+motivo exato (conta inativa, sem senha, senha trocada, bloqueio por tentativas).
+
+**A causa mais comum é o autofill do navegador** repondo uma conta antiga: a página abre com
+um e-mail já preenchido, você clica em Entrar sem reparar, e leva "E-mail ou senha incorretos".
+O erro agora mostra **qual e-mail foi tentado** — se não for o seu, apague o campo e digite de
+novo (ou use uma janela anônima, `Ctrl+Shift+N`).
+
 > Senhas só de teste local. Em produção, senhas reais e fortes.
 > **Novidade:** dá para trocar a própria senha e editar o perfil em **Configurações** (menu do usuário, no rodapé da barra lateral).
 
