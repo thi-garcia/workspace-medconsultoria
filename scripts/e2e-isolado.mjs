@@ -108,6 +108,22 @@ function liberarPortas() {
   }
 }
 
+/** Loga como ROOT e lista os serviços uma vez, disparando o lazy-seed do catálogo. */
+async function aquecerCatalogo() {
+  const senha = process.env.SEED_ROOT_PASSWORD;
+  const email = process.env.SEED_ROOT_EMAIL ?? "root@medconsultoria.com.br";
+  if (!senha) return; // sem senha no ambiente, deixa a suíte reportar o que faltar
+  const login = await fetch(`${BASE_URL}/trpc/auth.login`, {
+    method: "POST",
+    headers: { "content-type": "application/json", origin: BASE_URL },
+    body: JSON.stringify({ json: { email, password: senha } }),
+  });
+  const cookie = (login.headers.get("set-cookie") ?? "").split(";")[0];
+  if (!cookie) return;
+  const r = await fetch(`${BASE_URL}/trpc/servicos.list`, { headers: { cookie, origin: BASE_URL } });
+  console.log(`  ${r.ok ? "✓" : "✗"} catálogo de serviços aquecido (HTTP ${r.status})`);
+}
+
 function derrubar() {
   for (const p of filhos) {
     if (!p.pid) continue;
@@ -158,7 +174,13 @@ async function main() {
   await esperarSaudavel();
   console.log(`✓ app isolado no ar em ${BASE_URL}`);
 
-  // 4) Fixtures + suíte, contra a instância isolada.
+  // 4) Aquece o catálogo de serviços. Ele nasce por LAZY-SEED na primeira listagem — num banco
+  // recém-criado ainda não existe, e specs que escolhem um serviço no formulário (ex.: "Gestão
+  // Operacional" no Novo lead) falhavam por dependerem de alguém ter aberto a página antes.
+  // É o mesmo efeito de abrir "Serviços" no navegador.
+  await aquecerCatalogo();
+
+  // 5) Fixtures + suíte, contra a instância isolada.
   run("node", ["scripts/e2e-fixtures.mjs"], env);
   run("pnpm", ["exec", "playwright", "test", ...process.argv.slice(2)], { ...env, E2E_BASE_URL: BASE_URL });
 }

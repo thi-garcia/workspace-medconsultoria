@@ -8,6 +8,8 @@ export interface Fixtures {
   outroClienteId: string;
   outroDocId: string;
   outroConversaId: string;
+  /** Projeto garantido pela setup — não depende de outro spec ter convertido um lead. */
+  projetoId: string;
   resetRawValid: string;
   resetRawExpired: string;
 }

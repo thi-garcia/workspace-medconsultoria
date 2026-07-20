@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { lerFixtures } from "./fixtures-helper";
 
 // Bloco 11 — Responsividade FUNCIONAL: em cada viewport, além de não haver overflow horizontal,
 // AÇÕES REAIS são CONCLUÍDAS pela interface (criar+salvar lead; ação financeira: criar→marcar→excluir).
@@ -76,11 +77,8 @@ for (const vp of VIEWPORTS) {
     const RUN = `CRD${vp.w}${Date.now().toString().slice(-4)}`;
     const CARD = `Cartão ${RUN}`;
 
-    // Abre o primeiro projeto do seed (id dinâmico via API — sem hardcodar)
-    const res = await page.request.get("/trpc/projetos.list");
-    const projetos = (await res.json()).result.data.json as { id: string }[];
-    expect(projetos.length, "seed deve ter ao menos um projeto").toBeGreaterThan(0);
-    await page.goto(`/projetos/${projetos[0].id}`);
+    // Projeto GARANTIDO pela setup — antes dependia de `flows-comercial` ter rodado antes.
+    await page.goto(`/projetos/${lerFixtures().projetoId}`);
     await semOverflow(page);
 
     // Cria cartão

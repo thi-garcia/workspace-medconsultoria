@@ -106,6 +106,35 @@ async function seedIsolamento() {
   return { portalClienteId, portalClienteNome, outroClienteId, outroDocId: DOC_ID, outroConversaId: CONV_ID };
 }
 
+/**
+ * Projeto determinístico.
+ *
+ * `flows-projetos` e `responsividade` abriam "o primeiro projeto do seed" — mas nem o `db:seed`
+ * nem o `db:demo` criam projetos: eles apareciam por efeito colateral de `flows-comercial`, que
+ * roda antes por ordem alfabética e converte um lead. Dependência de ordem disfarçada de seed:
+ * num banco recém-criado a cadeia começa vazia e 5 testes quebravam. Aqui o projeto passa a
+ * existir sempre, independente de quais specs rodem ou em que ordem.
+ */
+async function seedProjeto() {
+  const PRJ_ID = "e2eprojetofixture0000000";
+  const cliente = await prisma.cliente.findFirst({ where: { deletedAt: null }, select: { id: true } });
+  if (!cliente) throw new Error("Nenhum cliente para ancorar o projeto de fixture.");
+  const dono = await prisma.user.findFirst({ where: { role: { in: ["ROOT", "ADMIN"] }, ativo: true }, select: { id: true } });
+
+  await prisma.card.deleteMany({ where: { projetoId: PRJ_ID } });
+  await prisma.projeto.deleteMany({ where: { id: PRJ_ID } });
+  await prisma.projeto.create({
+    data: {
+      id: PRJ_ID,
+      nome: "Projeto E2E (fixture)",
+      clienteId: cliente.id,
+      status: "ATIVO",
+      responsavelId: dono?.id ?? null,
+    },
+  });
+  return PRJ_ID;
+}
+
 async function seedReset() {
   const user = await prisma.user.upsert({
     where: { email: RESET_EMAIL },
@@ -123,14 +152,19 @@ async function seedReset() {
 async function main() {
   const briefingReqId = await seedBriefing();
   const iso = await seedIsolamento();
+  const projetoId = await seedProjeto();
   const reset = await seedReset();
   mkdirSync("e2e/.auth", { recursive: true });
   writeFileSync(
     "e2e/.auth/fixtures.json",
-    JSON.stringify({ briefingReqId, ...iso, resetRawValid: reset.rawValid, resetRawExpired: reset.rawExpired }, null, 2),
+    JSON.stringify(
+      { briefingReqId, ...iso, projetoId, resetRawValid: reset.rawValid, resetRawExpired: reset.rawExpired },
+      null,
+      2,
+    ),
   );
   await prisma.$disconnect();
-  console.log("✓ fixtures E2E semeadas (briefing + isolamento + reset) → e2e/.auth/fixtures.json");
+  console.log("✓ fixtures E2E semeadas (briefing + isolamento + projeto + reset) → e2e/.auth/fixtures.json");
 }
 
 main().catch(async (e) => {
