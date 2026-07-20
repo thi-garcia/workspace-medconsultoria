@@ -133,8 +133,9 @@ Depois é só abrir **http://localhost:4310**.
 | --------------------------------- | ----------------------------------------- |
 | `pnpm dev`                      | Liga API (porta 4319) + site (porta 4310) |
 | `pnpm db:up` / `pnpm db:down` | Liga / desliga o banco (Docker)           |
-| `pnpm db:demo`                  | Recria os dados de exemplo                |
-| `pnpm db:seed`                  | Recria o usuário ROOT                    |
+| `pnpm db:demo`                  | Recria os dados de exemplo (só em banco local — trava de produção) |
+| `pnpm db:seed`                  | Recria o usuário ROOT + as etapas do funil |
+| `pnpm test:e2e:isolado`         | Roda os testes num banco SEPARADO (`medconsultoria_e2e`) — não suja o banco de desenvolvimento |
 
 **Para desligar a aplicação:** aperte `Ctrl + C` no terminal onde o `pnpm dev` está rodando.
 
