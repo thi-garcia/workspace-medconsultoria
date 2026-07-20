@@ -22,6 +22,7 @@
 import { spawnSync } from "node:child_process";
 import { readFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { podeRodarDemoSeed } from "../packages/db/src/seed-guard";
+import { EQUIPE_REAL } from "../packages/db/src/seed-config";
 
 const APLICAR = process.argv.includes("--apply");
 const CONTAINER = "medconsultoria-mysql";
@@ -40,6 +41,12 @@ if (!guard.permitido) {
 
 const BANCO = new URL(process.env.DATABASE_URL!).pathname.replace("/", "");
 
+/**
+ * As contas reais da equipe (ROOT e ADMIN) SOBREVIVEM à limpeza — sem elas ninguém entra na
+ * aplicação depois de zerar. Respeita override por env, igual ao seed.
+ */
+const EMAILS_EQUIPE = EQUIPE_REAL.map((m) => `'${process.env[m.chaveEmail] ?? m.emailPadrao}'`).join(", ");
+
 /** Tabelas esvaziadas por completo — tudo nelas é transacional ou de teste. */
 const ESVAZIAR = [
   "ActivityLog", "Session", "Notificacao", "ChecklistItem", "EmailEnviado", "LeadPasso",
@@ -53,10 +60,10 @@ const ESVAZIAR = [
 /** Limpezas seletivas: preservam o que é catálogo real. */
 const SELETIVAS = [
   {
-    rotulo: "usuários que não são o ROOT",
-    contar: `SELECT COUNT(*) FROM User WHERE role <> 'ROOT'`,
-    listar: `SELECT CONCAT(nome, ' <', email, '> ', role) FROM User WHERE role <> 'ROOT'`,
-    apagar: [`DELETE FROM User WHERE role <> 'ROOT'`],
+    rotulo: "usuários que não são da equipe real (docs/ACESSOS.md)",
+    contar: `SELECT COUNT(*) FROM User WHERE email NOT IN (${EMAILS_EQUIPE})`,
+    listar: `SELECT CONCAT(nome, ' <', email, '> ', role) FROM User WHERE email NOT IN (${EMAILS_EQUIPE})`,
+    apagar: [`DELETE FROM User WHERE email NOT IN (${EMAILS_EQUIPE})`],
   },
   {
     rotulo: "categorias PESSOAIS (a carteira pessoal morre com o usuário)",
@@ -134,7 +141,7 @@ const contar = (tabela: string, onde = "") => `SELECT COUNT(*) FROM \`${tabela}\
 
 console.log("\nO que SOBREVIVE:");
 for (const [rotulo, q] of [
-  ["usuário ROOT", contar("User", "role = 'ROOT'")],
+  ["contas da equipe real (ROOT + ADMIN)", contar("User", `email IN (${EMAILS_EQUIPE})`)],
   ["etapas do funil", contar("PipelineStage")],
   ["serviços reais", contar("Servico", "nome NOT LIKE '%E2E%' AND nome NOT LIKE '%Guard%'")],
   ["modelos de documento", contar("ModeloDocumento")],
@@ -176,7 +183,7 @@ for (const [rotulo, q] of [
   ["documentos", contar("Documento")],
   ["conversas", contar("Conversa")],
   ["eventos", contar("Evento")],
-  ["usuários (só ROOT)", contar("User")],
+  ["usuários (só a equipe real)", contar("User")],
   ["serviços reais", contar("Servico")],
   ["etapas do funil", contar("PipelineStage")],
   ["modelos", contar("ModeloDocumento")],

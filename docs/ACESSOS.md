@@ -19,10 +19,17 @@ Se não abrir (ex.: você reiniciou o computador), veja "Como ligar" no final.
 
 | E-mail                                 | Papel        | O que vê                                                                    |
 | -------------------------------------- | ------------ | ---------------------------------------------------------------------------- |
-| `root@medconsultoria.com.br`         | ROOT         | Tudo. Único que pode criar/gerenciar**administradores**               |
-| `thais.garcia@medconsultoria.com.br` | ADMIN        | Tudo (inclusive Financeiro e Usuários)                                      |
-| `func@medconsultoria.com.br`         | FUNCIONÁRIO | Tudo,**exceto** Financeiro e Usuários                                 |
-| `cliente@medconsultoria.com.br`      | CLIENTE      | **Portal do Cliente** — só os dados do próprio cliente (Acme Saude) |
+| `root@medconsultoria.com.br`         | ROOT         | Tudo, mais o painel**Sistema**. Único que pode criar/gerenciar **administradores** |
+| `thais.garcia@medconsultoria.com.br` | ADMIN        | Tudo (inclusive Financeiro e Equipe) —**exceto** o painel Sistema      |
+
+> Estas duas contas são criadas pelo `pnpm db:seed` e **sobrevivem** ao `pnpm db:limpar`.
+> O seed **nunca sobrescreve a senha** de uma conta que já existe — pode rodar à vontade.
+
+**FUNCIONÁRIO e CLIENTE:** não existem mais como conta fixa. A limpeza de 20/07/2026 removeu
+os usuários fictícios. Crie-os pelo fluxo real da aplicação:
+
+- **funcionário** → **Ajustes → Equipe e acessos → convidar** (o convite chega por e-mail);
+- **cliente** → cadastre o cliente e use **"Enviar acesso ao Portal"** na ficha dele.
 
 > Senhas só de teste local. Em produção, senhas reais e fortes.
 > **Novidade:** dá para trocar a própria senha e editar o perfil em **Configurações** (menu do usuário, no rodapé da barra lateral).
