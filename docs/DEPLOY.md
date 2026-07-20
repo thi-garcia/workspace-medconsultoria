@@ -4,6 +4,11 @@ Guia para colocar o Workspace no ar em **https://workspace.medconsultoria.com.br
 O app é **um único processo Node** (`server.js`) que serve, na mesma porta: a API tRPC, o WebSocket (Socket.IO) e o site (SPA) já buildado. O deploy envia um **artefato auto-contido** por SSH (a TineHost tem SSH, mas não Git).
 
 > ✅ O artefato de produção já foi **testado localmente** (um processo servindo `/health`, o SPA, o fallback de rotas e o tRPC com MySQL). O pipeline está pronto — falta só você me passar os dados da hospedagem.
+>
+> ⚠️ **Não faça deste o primeiro deploy.** Suba antes em **homologação** — subdomínio, banco e
+> uploads separados, sem e-mail real — e só promova para produção depois de validar lá.
+> Passo a passo: **[`HOMOLOGACAO.md`](./HOMOLOGACAO.md)**. Este documento continua sendo a
+> referência técnica (DirectAdmin, Passenger, rsync); a homologação só muda os endereços e o `.env`.
 
 ---
 
