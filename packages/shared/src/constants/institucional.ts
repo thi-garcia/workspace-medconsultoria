@@ -45,3 +45,25 @@ export const PENDENTE_THAIS = {
 export function rodapeInstitucional(): string {
   return [INSTITUCIONAL.nome, INSTITUCIONAL.email, INSTITUCIONAL.telefone, INSTITUCIONAL.site].join(" · ");
 }
+
+/** Marcador visível para dado que só a Thaís pode preencher. Nunca some silenciosamente. */
+const aPreencher = (campo: string) => `**[A PREENCHER: ${campo}]**`;
+
+/**
+ * Qualificação da CONTRATADA para contratos.
+ *
+ * Um contrato precisa qualificar **as duas** partes — hoje só a CONTRATANTE era qualificada
+ * (nome, documento, e-mail) e a CONTRATADA aparecia como um nome solto. O que já é conhecido
+ * entra; o que falta aparece como marcador **visível em negrito**, para a Thaís enxergar
+ * exatamente o que preencher antes de assinar (em vez de o campo sumir sem ninguém notar).
+ */
+export function qualificacaoContratada(): string {
+  return [
+    `a ${PENDENTE_THAIS.razaoSocial ?? aPreencher("RAZÃO SOCIAL")}`,
+    `nome fantasia **${INSTITUCIONAL.nome}**`,
+    `inscrita no CNPJ sob o nº ${PENDENTE_THAIS.cnpj ?? aPreencher("CNPJ")}`,
+    `com sede em ${PENDENTE_THAIS.enderecoCompleto ?? aPreencher("ENDEREÇO COMPLETO")}, ${INSTITUCIONAL.cidade}`,
+    `e-mail ${INSTITUCIONAL.email}`,
+    `telefone ${INSTITUCIONAL.telefone}`,
+  ].join(", ");
+}

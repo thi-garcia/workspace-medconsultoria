@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { INSTITUCIONAL, PENDENTE_THAIS, rodapeInstitucional } from "@app/shared";
+import { INSTITUCIONAL, PENDENTE_THAIS, rodapeInstitucional, qualificacaoContratada } from "@app/shared";
 
 const raiz = resolve(__dirname, "../../../..");
 const ler = (rel: string) => readFileSync(resolve(raiz, rel), "utf8");
@@ -30,6 +30,28 @@ describe("identidade institucional", () => {
     expect(PENDENTE_THAIS.cnpj).toBeNull();
     expect(PENDENTE_THAIS.enderecoCompleto).toBeNull();
     expect(PENDENTE_THAIS.foro).toBeNull();
+  });
+
+  /**
+   * Um contrato precisa qualificar as DUAS partes. Antes, só a CONTRATANTE era qualificada e a
+   * CONTRATADA aparecia como um nome solto — falha que um advogado apontaria de imediato.
+   */
+  it("a qualificação da CONTRATADA traz o que já se sabe", () => {
+    const q = qualificacaoContratada();
+    expect(q).toContain(INSTITUCIONAL.nome);
+    expect(q).toContain("CNPJ");
+    expect(q).toContain(INSTITUCIONAL.email);
+    expect(q).toContain(INSTITUCIONAL.telefone);
+    expect(q).toContain(INSTITUCIONAL.cidade);
+  });
+
+  it("o que falta aparece como marcador VISÍVEL, nunca some calado", () => {
+    const q = qualificacaoContratada();
+    for (const campo of ["RAZÃO SOCIAL", "CNPJ", "ENDEREÇO COMPLETO"]) {
+      expect(q, `${campo} sumiu do contrato em vez de virar marcador`).toContain(`**[A PREENCHER: ${campo}]**`);
+    }
+    // Nem "undefined"/"null" vazando para dentro do contrato.
+    expect(q).not.toMatch(/undefined|null/);
   });
 
   it("nenhum material cliente-facing tem contato solto no código", () => {
