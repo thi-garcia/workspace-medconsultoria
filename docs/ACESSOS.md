@@ -187,3 +187,19 @@ Verificação técnica da API (opcional): http://localhost:4319/health deve resp
 - Isto roda **na sua máquina** — só você acessa. Ninguém de fora vê.
 - Publicar no endereço real (workspace.medconsultoria.com.br) é uma etapa separada, que faremos quando você tiver os dados da hospedagem (TineHost).
 - Este documento vale para o ambiente local; quando publicarmos, crio um equivalente com os acessos de produção.
+
+---
+
+## 🩺 Verificar a saúde da aplicação
+
+| Comando | O que faz |
+| --- | --- |
+| `pnpm doutor` | **Varre a aplicação inteira num navegador real** (15 rotas × 3 tamanhos de tela) e lista os defeitos encontrados. Somente leitura — não cria, não apaga, não envia e-mail. |
+| `pnpm doutor --perfil admin` | O mesmo, entrando como ADMIN (permissões diferentes) |
+| `pnpm acessos` | Testa o login de cada conta e diz o motivo exato de cada falha |
+| `pnpm verificar:bootstrap` | Ensaio de banco limpo — o que acontecerá em produção |
+
+O **doutor** detecta: página que não carrega, quebra ou fica em branco · erro de JavaScript ·
+valores crus vazando na tela (`undefined`, `NaN`, `Invalid Date`…) · rolagem horizontal (layout
+que não cabe) · link quebrado · imagem que não carregou · texto em inglês · campo de formulário
+sem rótulo. Sai com erro se achar algo — dá para usar em automação.
