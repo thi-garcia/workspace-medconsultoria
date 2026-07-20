@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { lerFixtures } from "./fixtures-helper";
 
 // Cenário 5 — Projetos: cartão (criar), checklist (add+marcar), comentário, timer (start/stop),
 // persistência após refresh e mover cartão entre colunas do kanban (dnd-kit / PointerSensor).
@@ -8,11 +9,10 @@ const RUN = `PJ${Date.now().toString().slice(-6)}`;
 const CARD = `Cartão ${RUN}`;
 
 async function abrirProjeto(page: Page) {
-  // Abre o PRIMEIRO projeto do seed (id dinâmico via API — sem hardcodar nome/id).
-  const res = await page.request.get("/trpc/projetos.list");
-  const projetos = (await res.json()).result.data.json as { id: string }[];
-  expect(projetos.length, "seed deve ter ao menos um projeto").toBeGreaterThan(0);
-  await page.goto(`/projetos/${projetos[0].id}`);
+  // Projeto GARANTIDO pela setup. Antes isto abria "o primeiro projeto do seed", que na verdade
+  // só existia porque `flows-comercial` roda antes e converte um lead — dependência de ordem que
+  // quebrava a suíte num banco recém-criado.
+  await page.goto(`/projetos/${lerFixtures().projetoId}`);
   await expect(page.getByRole("button", { name: "Novo cartão" })).toBeVisible();
 }
 
