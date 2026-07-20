@@ -11,6 +11,18 @@ test.describe("Auth — login inválido", () => {
     await expect(page.getByRole("alert")).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
   });
+
+  // O navegador autopreenche contas antigas. Sem ver QUAL e-mail foi enviado, a pessoa jura
+  // que digitou o certo e fica presa em "senha incorreta" — foi exatamente o que aconteceu
+  // depois da limpeza de dados, com o Chrome repondo uma conta que não existe mais.
+  test("o erro mostra qual e-mail foi tentado (denuncia autofill de conta antiga)", async ({ page }) => {
+    await page.goto("/login");
+    await page.locator('input[type="email"]').fill("conta-antiga@example.test");
+    await page.locator('input[type="password"]').fill(PASS);
+    await page.getByRole("button", { name: /entrar/i }).click();
+    await expect(page.getByRole("alert")).toContainText("conta-antiga@example.test");
+    await expect(page.getByRole("alert")).toContainText(/navegador pode ter preenchido outro/i);
+  });
 });
 
 test.describe("Auth — logout", () => {

@@ -15,6 +15,10 @@ export function LoginPage() {
     onSuccess: () => utils.auth.me.invalidate(),
   });
   const [showPass, setShowPass] = useState(false);
+  // Guarda o e-mail da ÚLTIMA tentativa para mostrá-lo no erro. O navegador costuma
+  // autopreencher uma conta antiga; sem ver qual e-mail foi enviado, a pessoa jura que
+  // digitou o certo e fica presa em "senha incorreta".
+  const [emailTentado, setEmailTentado] = useState("");
 
   const {
     register,
@@ -31,7 +35,14 @@ export function LoginPage() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit((data) => login.mutate(data))} className="space-y-5" noValidate>
+      <form
+        onSubmit={handleSubmit((data) => {
+          setEmailTentado(data.email);
+          login.mutate(data);
+        })}
+        className="space-y-5"
+        noValidate
+      >
         <div className="space-y-1.5">
           <Label htmlFor="email">E-mail</Label>
           <div className="relative">
@@ -86,7 +97,16 @@ export function LoginPage() {
         {login.error && (
           <div role="alert" className="flex items-start gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-sm text-destructive">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-            <span>{login.error.message}</span>
+            <span>
+              {login.error.message}
+              {emailTentado && (
+                <>
+                  {" "}
+                  Tentamos entrar com <strong className="break-all">{emailTentado}</strong> — confira se é mesmo
+                  o seu e-mail (o navegador pode ter preenchido outro).
+                </>
+              )}
+            </span>
           </div>
         )}
 
