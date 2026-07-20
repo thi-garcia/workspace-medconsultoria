@@ -2,7 +2,9 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 
 // Cenário 9 — IA: disponibilidade é só um booleano; RBAC (CLIENTE não acessa a IA da equipe);
 // e o segredo (OPENAI_API_KEY) NUNCA chega ao navegador (nem config do painel Sistema vaza chave).
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 
 async function dataJson(res: { json: () => Promise<unknown> }) {
   return (await res.json() as { result: { data: { json: unknown } } }).result.data.json;

@@ -4,7 +4,9 @@ import { lerFixtures } from "./fixtures-helper";
 // Cenário 7 — Mensagens/suporte: um chamado é ESCOPADO ao clienteId da sessão.
 // O cliente abre e lê o próprio chamado, NÃO lê o de outro cliente, e a infra
 // de tempo real (socket.io) está no ar e responde ao handshake autenticado.
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 const ASSUNTO = `Chamado E2E ${Date.now().toString().slice(-6)}`;
 
 function jsonBody(input: unknown) {

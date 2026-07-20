@@ -3,7 +3,9 @@ import { test, expect, type APIRequestContext } from "@playwright/test";
 // Cenário 4 — Serviços/requisitos/briefings: o cliente preenche um briefing online com
 // TODOS os tipos de campo (curto/longo/escolha/múltipla/número/sim-não/data), envia e o
 // conteúdo persiste (round-trip pela mesma API que a equipe lê na ficha). Setup via DB (marcado E2E).
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 const REQ = "e2ereqbrief00000000000000"; // ServicoRequisito(BRIEFING) semeado para o Acme
 
 function jsonBody(input: unknown) {

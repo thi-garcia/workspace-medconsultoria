@@ -84,6 +84,30 @@ async function esperarSaudavel(timeoutMs = 180_000) {
   throw new Error(`app isolado não ficou saudável (web ${WEB_PORT} / api ${API_PORT})`);
 }
 
+/**
+ * Mata quem já estiver ocupando as portas do runner.
+ *
+ * Sem isto, uma execução anterior interrompida (Ctrl+C, timeout do terminal) deixa a instância
+ * viva; a nova sobe com EADDRINUSE, os testes batem no app VELHO — apontado para o banco velho —
+ * e falham com 401 em specs que nada têm a ver com a mudança. Foi o que aconteceu: 13 falhas
+ * fantasma que pareciam regressão da aplicação.
+ */
+function liberarPortas() {
+  for (const porta of [WEB_PORT, API_PORT]) {
+    if (process.platform === "win32") {
+      const r = spawnSync("powershell", [
+        "-NoProfile",
+        "-Command",
+        `Get-NetTCPConnection -State Listen -LocalPort ${porta} -ErrorAction SilentlyContinue | ` +
+          `ForEach-Object { taskkill /PID $_.OwningProcess /T /F 2>&1 | Out-Null }`,
+      ]);
+      if (r.status === 0) continue;
+    } else {
+      spawnSync("bash", ["-c", `lsof -ti tcp:${porta} | xargs -r kill -9`], { stdio: "ignore" });
+    }
+  }
+}
+
 function derrubar() {
   for (const p of filhos) {
     if (!p.pid) continue;
@@ -103,8 +127,12 @@ function derrubar() {
 
 async function main() {
   console.log(`▸ banco isolado: ${BANCO} (o banco de desenvolvimento NÃO é tocado)`);
+  liberarPortas();
 
-  // 1) Cria o banco se não existir. Idempotente; nunca dropa.
+  // 1) Banco DO ZERO a cada execução — reprodutibilidade igual à da CI, que sobe um container
+  // novo por job. Reaproveitar o banco entre rodadas acumulava estado (leads/projetos/contas de
+  // execuções anteriores) e fazia specs sem relação nenhuma falharem, escondendo o defeito real.
+  // Só o banco de TESTE é recriado; o de desenvolvimento nunca é tocado.
   run("docker", [
     "exec",
     CONTAINER,
@@ -112,7 +140,8 @@ async function main() {
     "-uroot",
     "-proot",
     "-e",
-    `CREATE DATABASE IF NOT EXISTS \`${BANCO}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; ` +
+    `DROP DATABASE IF EXISTS \`${BANCO}\`; ` +
+      `CREATE DATABASE \`${BANCO}\` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci; ` +
       `GRANT ALL ON \`${BANCO}\`.* TO 'medconsultoria'@'%';`,
   ]);
 

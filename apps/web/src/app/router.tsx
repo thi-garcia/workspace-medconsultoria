@@ -12,6 +12,7 @@ import { EmptyState } from "../components/ui/empty-state";
 import { buttonVariants } from "../components/ui/button";
 import { DashboardPage } from "../features/dashboard/DashboardPage";
 import { RoleGuard } from "../components/RoleGuard";
+import { JaConectadoPage } from "../features/auth/JaConectadoPage";
 
 // Páginas carregadas sob demanda (um chunk por rota) — só o Dashboard (landing) é eager.
 const ClientesListPage = lazyRouteComponent(() => import("../features/crm/clientes/ClientesListPage"), "ClientesListPage");
@@ -207,13 +208,15 @@ const modeloDetailRoute = createRoute({
   ),
 });
 
-/** Já autenticado, `/login` não faz sentido — manda para a Home. */
+/**
+ * `/login` com sessão ativa. NÃO redireciona mais em silêncio: quem queria trocar de conta
+ * era devolvido ao painel ainda logado como o usuário anterior e concluía que a outra conta
+ * não funcionava. Agora a tela diz quem está conectado e oferece a troca.
+ */
 const loginRedirectRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/login",
-  beforeLoad: () => {
-    throw redirect({ to: "/" });
-  },
+  component: JaConectadoPage,
 });
 
 const routeTree = rootRoute.addChildren([

@@ -140,3 +140,32 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
   sobre o navegador.
 - **Nota:** não há credencial fixa no código do login (`useForm` sem `defaultValues`); o
   preenchimento vem 100% do gerenciador de senhas do navegador.
+
+---
+
+## BUG-007 — Não dava para trocar de conta: `/login` redirecionava em silêncio
+- **Status:** 🟢 corrigido
+- **Severidade:** **ALTA** — impedia o acesso a uma segunda conta; foi o que travou o dono
+- **Módulo/rota:** `/login` com sessão ativa — `apps/web/src/app/router.tsx`
+- **Relato do dono:** *"Testei os acessos. Somente o root funcionou (e em janela anônima)."*
+- **Reprodução:**
+  1. Entrar como **ROOT** (por exemplo numa janela anônima).
+  2. Querer entrar como **ADMIN**: navegar para `/login`.
+  3. A app **redireciona para `/`** sem dizer nada — o formulário nunca aparece.
+  4. Você continua no painel logado como ROOT e conclui que **o ADMIN não funciona**.
+- **Diagnóstico:** o ADMIN sempre esteve correto. Verificado por quatro caminhos: API direta
+  (200), proxy do front (200 + `Set-Cookie`), formulário no navegador, e `auth.me` retornando
+  `Thaís Garcia <thais.garcia@medconsultoria.com.br> ADMIN` com o painel renderizando
+  "Boa tarde, Thaís 👋". Também descartadas variações de digitação: maiúsculas e espaços em volta
+  **entram** (o schema faz `trim`+`toLowerCase`); só o acento (`thaís.garcia@`) é recusado, mas com
+  a mensagem clara "E-mail inválido".
+- **Causa:** `beforeLoad: () => { throw redirect({ to: "/" }) }` na rota `/login`. Trocar de conta
+  exigia achar o botão "Sair" no rodapé da barra lateral — não havia caminho pelo `/login`.
+- **Solução:** a rota passa a renderizar **`JaConectadoPage`**: mostra **quem** está conectado
+  (nome, e-mail e papel, sem truncar) e oferece **"Continuar como X"** ou **"Entrar com outra
+  conta"** (que faz logout e devolve o formulário). Junto: ao entrar estando em `/login`, a URL
+  vira `/` antes de a sessão existir — senão o login caía na própria tela de "já conectado" em vez
+  do painel.
+- **Regressão:** `e2e/auth-flows.spec.ts` — `/login` autenticado não pode redirecionar, precisa
+  identificar o usuário, e o fluxo completo (trocar → entrar → painel) é exercido ponta a ponta.
+- **Revalidação manual:** ao vivo, ADMIN → "Entrar com outra conta" → ROOT → painel; e o inverso.

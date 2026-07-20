@@ -12,7 +12,12 @@ import { AuthShell } from "./AuthShell";
 export function LoginPage() {
   const utils = trpc.useUtils();
   const login = trpc.auth.login.useMutation({
-    onSuccess: () => utils.auth.me.invalidate(),
+    onSuccess: () => {
+      // Entrou estando em `/login`? Tira a URL de login do caminho ANTES de a sessão existir,
+      // senão a rota `/login` (agora "Você já está conectado") aparece no lugar do painel.
+      if (window.location.pathname === "/login") window.history.replaceState({}, "", "/");
+      utils.auth.me.invalidate();
+    },
   });
   const [showPass, setShowPass] = useState(false);
   // Guarda o e-mail da ÚLTIMA tentativa para mostrá-lo no erro. O navegador costuma

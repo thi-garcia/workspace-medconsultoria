@@ -6,7 +6,9 @@ import { lerFixtures } from "./fixtures-helper";
 // Dados (nome do cliente, doc alheio) vêm da fixture — NUNCA hardcodar ids/nomes do seed.
 test.use({ storageState: "e2e/.auth/cliente.json" });
 
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 
 test("Portal carrega o próprio cliente e bloqueia rota interna", async ({ page }) => {
   const { portalClienteNome } = lerFixtures();

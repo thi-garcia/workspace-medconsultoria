@@ -5,7 +5,9 @@ import { readFileSync } from "node:fs";
 // Garante: token válido consome e redefine; uso ÚNICO (reuso falha); expirado falha;
 // e-mail inexistente responde ok:true (sem enumeração de usuário).
 // Os RAW dos tokens (hash SHA-256 no banco) vêm da fixture determinística semeada no setup.
-const BASE = "http://localhost:4310";
+// Respeita `E2E_BASE_URL` (mesma regra do playwright.config): fixar a porta fazia estes
+// testes autenticarem numa instância e chamarem OUTRA — 401 no runner de banco isolado.
+const BASE = process.env.E2E_BASE_URL ?? "http://localhost:4310";
 // Lido DENTRO do teste (não no escopo do módulo): o arquivo só existe após a setup semear as
 // fixtures. Ler no topo quebrava a COLETA do Playwright em ambiente limpo (ENOENT).
 function lerFixtures() {
