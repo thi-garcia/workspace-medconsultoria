@@ -1,3 +1,4 @@
+import { INSTITUCIONAL } from "@app/shared";
 import { config } from "../config.js";
 
 /** Content-ID do logo embutido (anexado em toda mensagem por enviarEmail). */
@@ -104,7 +105,9 @@ export function montarEmail(opts: EmailBrandOpts): { html: string; texto: string
             <p style="margin:0 0 6px;font-size:12px;line-height:1.6;color:${CORES.muted};">
               <a href="${origem}" target="_blank" style="color:${CORES.link};text-decoration:none;font-weight:600;">Acessar o workspace</a>
               &nbsp;·&nbsp;
-              <a href="mailto:contato@medconsultoria.com.br" style="color:${CORES.link};text-decoration:none;">contato@medconsultoria.com.br</a>
+              <a href="mailto:${INSTITUCIONAL.email}" style="color:${CORES.link};text-decoration:none;">${INSTITUCIONAL.email}</a>
+              &nbsp;·&nbsp;
+              <a href="${INSTITUCIONAL.siteUrl}" target="_blank" style="color:${CORES.link};text-decoration:none;">${INSTITUCIONAL.site}</a>
             </p>
             <p style="margin:0 0 4px;font-size:11px;line-height:1.6;color:${CORES.muted};">
               Você recebeu este e-mail porque há uma ação relacionada à sua conta no Workspace MedConsultoria.

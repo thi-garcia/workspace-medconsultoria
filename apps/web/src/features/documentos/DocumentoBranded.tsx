@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { marked } from "marked";
 import DOMPurify from "dompurify";
+import { INSTITUCIONAL, rodapeInstitucional } from "@app/shared";
 
 /**
  * Moldura da marca para QUALQUER documento (proposta, contrato, relatório…).
@@ -159,8 +160,8 @@ export function documentoBrandedHtml(p: DocumentoBrandedProps): string {
   return `
     <div class="doc-head">
       <div class="doc-brand">
-        <img src="/logo.png" alt="MedConsultoria">
-        <small>Consultoria para clínicas e consultórios</small>
+        <img src="/logo.png" alt="${esc(INSTITUCIONAL.nome)}">
+        <small>${esc(INSTITUCIONAL.tagline)}</small>
       </div>
       <div class="doc-meta">
         ${p.tipo ? `<span class="tipo">${esc(p.tipo)}</span>` : ""}${p.statusLabel ? `<span class="status">${esc(p.statusLabel)}</span>` : ""}
@@ -170,7 +171,7 @@ export function documentoBrandedHtml(p: DocumentoBrandedProps): string {
     <h1 class="doc-titulo">${esc(p.titulo)}</h1>
     <div class="doc-body">${renderMarkdown(p.conteudoMarkdown)}</div>
     <div class="doc-foot">
-      <span class="marca">MedConsultoria</span> · contato@medconsultoria.com.br · workspace.medconsultoria.com.br
+      <span class="marca">${esc(INSTITUCIONAL.nome)}</span> · ${esc(rodapeInstitucional().replace(`${INSTITUCIONAL.nome} · `, ""))}
       ${p.rodapeExtra ? `<div class="hash">${esc(p.rodapeExtra)}</div>` : ""}
     </div>`;
 }
