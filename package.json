@@ -21,6 +21,7 @@
     "verificar:bootstrap": "node scripts/verificar-bootstrap.mjs",
     "db:limpar": "tsx scripts/limpar-dados.ts",
     "acessos": "tsx scripts/verificar-acessos.ts",
+    "doutor": "tsx scripts/doutor.ts",
     "db:generate": "pnpm --filter @app/db generate",
     "db:migrate": "pnpm --filter @app/db migrate",
     "db:seed": "pnpm --filter @app/db seed",
