@@ -12,6 +12,7 @@ import type {
   GerarPautaInput,
 } from "@app/shared";
 import type { TipoModelo } from "@app/shared";
+import { qualificacaoContratada } from "@app/shared";
 import { aiService } from "../../lib/ai.js";
 import { avancarLeadPorClienteAuto, garantirClienteDoLead } from "../leads/leads.service.js";
 import { listModelos } from "./modelos.service.js";
@@ -465,7 +466,8 @@ export async function criarContrato(input: CriarContratoInput, userId: string) {
     .replace(/\{\{\s*clausulas_servicos\s*\}\}/g, clausulasServicos)
     .replace(/\{\{\s*valor\s*\}\}/g, valorBloco)
     .replace(/\{\{\s*prazo\s*\}\}/g, prazoTxt)
-    .replace(/\{\{\s*foro\s*\}\}/g, foroTxt);
+    .replace(/\{\{\s*foro\s*\}\}/g, foroTxt)
+    .replace(/\{\{\s*contratada\s*\}\}/g, qualificacaoContratada());
   const conteudo = render(comMarcadores, {}, cliente);
   const titulo = input.titulo?.trim() || `${modelo.nome} — ${cliente.nome}`;
 
@@ -676,6 +678,7 @@ export async function gerarParaLead(leadId: string, tipo: string, ator: { id: st
     variaveis.valor = "Conforme os valores da proposta comercial aprovada pela CONTRATANTE.";
     variaveis.prazo = textoVigencia(12);
     variaveis.foro = "da comarca do domicílio da CONTRATANTE";
+    variaveis.contratada = qualificacaoContratada();
   }
 
   const conteudo = render(modelo.corpo, variaveis, cliente);
