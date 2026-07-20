@@ -18,6 +18,26 @@ test.describe("Bloco 3 — UX de erros (ADMIN)", () => {
     await page.goto("/rota-que-nao-existe-xyz");
     await expect(page.getByText(/Página não encontrada/i)).toBeVisible();
     await expect(page.getByRole("navigation").first()).toBeVisible(); // shell/menu presente
+    // BUG-005: o fallback do título já é "MedConsultoria" e o sufixo era aplicado por cima.
+    await expect(page).toHaveTitle("MedConsultoria");
+  });
+
+  // BUG-004: `useEffect(() => window.scrollTo(0, 0), [])` devolvia implicitamente o retorno de
+  // `scrollTo` — uma **Promise** nos Chrome atuais. O React tratava isso como a função de
+  // limpeza, quebrava com "destroy is not a function" e a página inteira sumia. Como é onde se
+  // troca a própria senha, tem de renderizar sempre.
+  test("Configurações renderiza de verdade (efeito não pode devolver Promise)", async ({ page }) => {
+    const quebras: string[] = [];
+    page.on("pageerror", (e) => quebras.push(e.message));
+    page.on("console", (m) => m.type() === "error" && /destroy is not a function/.test(m.text()) && quebras.push(m.text()));
+
+    await page.goto("/configuracoes");
+
+    await expect(page.getByRole("heading", { name: "Configurações", level: 1 })).toBeVisible();
+    // Conteúdo real das três seções — não só o cabeçalho.
+    await expect(page.getByText(/Foto de perfil/i)).toBeVisible();
+    await expect(page.getByText(/senha/i).first()).toBeVisible();
+    expect(quebras, `a página quebrou: ${quebras.join(" | ")}`).toEqual([]);
   });
 });
 

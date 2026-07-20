@@ -69,3 +69,44 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
 - **Regressão:** `apps/web/src/features/dashboard/atividade-label.test.ts` (5 testes) — cruza a
   lista real de ações do backend contra os rótulos e falha se alguma cair no fallback genérico.
 - **Revalidação manual:** ao vivo no navegador, a linha passou a ler **"Thaís removeu um arquivo"**.
+
+---
+
+## BUG-004 — Página **Configurações** quebrava por inteiro (efeito devolvendo Promise)
+- **Status:** 🟢 corrigido
+- **Severidade:** **ALTA** — a página não renderizava **nada**, e é onde o usuário troca a própria senha e edita o perfil
+- **Módulo/rota:** `/configuracoes` — `apps/web/src/features/configuracoes/ConfiguracoesPage.tsx:333`
+- **Perfil/viewport:** todos os perfis · todos os viewports
+- **Reprodução:**
+  1. Logar (qualquer perfil) e abrir **Configurações** (menu do usuário, rodapé da barra lateral).
+  2. A área de conteúdo aparece **em branco** (`main.innerText.length === 0`).
+  3. No console: `TypeError: destroy is not a function` + o aviso do React
+     *"must not return anything besides a function, which is used for clean-up"*.
+- **Causa:** `useEffect(() => window.scrollTo(0, 0), [])`. O arrow function **sem bloco** devolve
+  implicitamente o retorno de `scrollTo` — que **nos Chrome atuais é uma `Promise`** (confirmado
+  ao vivo: `window.scrollTo(0,0) instanceof Promise === true`). O React trata esse retorno como a
+  função de limpeza do efeito, chama-o na desmontagem, estoura `destroy is not a function` e o
+  ErrorBoundary derruba a página. Só aparece em navegador que já devolve Promise — por isso passou.
+- **Solução:** corpo em **bloco**, para o efeito não devolver nada:
+  `useEffect(() => { window.scrollTo(0, 0); }, []);`
+- **Regressão:** `e2e/flows-erros-ux.spec.ts` — abre `/configuracoes`, exige o H1 **e** o conteúdo
+  real das seções, e falha se qualquer `pageerror` ou `destroy is not a function` aparecer.
+- **Revalidação manual:** ao vivo, `main` foi de **0 → 2.217 caracteres**; perfil, foto, senha e
+  preferências de e-mail todos visíveis.
+- **Observação:** o mesmo padrão existe em `autocomplete.tsx:51` e `combobox.tsx:71`
+  (`useEffect(() => setActive(…), […])`), mas ali é seguro — `setState` do React retorna
+  `undefined` por contrato. Não mexi (mudança cirúrgica).
+
+---
+
+## BUG-005 — Título da aba duplicava a marca na página 404
+- **Status:** 🟢 corrigido
+- **Severidade:** baixa (cosmético, visível na aba do navegador)
+- **Módulo/rota:** qualquer rota inexistente — `apps/web/src/components/layout/AppLayout.tsx:333`
+- **Reprodução:** abrir `/formularios` (rota aposentada pelo ADR-52) ou qualquer URL inválida →
+  a aba mostrava **"MedConsultoria · MedConsultoria"**.
+- **Causa:** o fallback de `usePageTitle()` já devolve `"MedConsultoria"`, e o `document.title`
+  concatenava `· MedConsultoria` por cima. Só o caso `"Início"` era tratado.
+- **Solução:** tratar também o fallback como "sem título próprio" → a aba fica só `MedConsultoria`.
+- **Regressão:** `e2e/flows-erros-ux.spec.ts` — `await expect(page).toHaveTitle("MedConsultoria")`
+  no teste de rota inexistente.
