@@ -1,5 +1,6 @@
 export * from "./constants/roles.js";
 export * from "./constants/email.js";
+export * from "./constants/institucional.js";
 export * from "./schemas/auth.js";
 export * from "./schemas/cliente.js";
 export * from "./schemas/lead.js";

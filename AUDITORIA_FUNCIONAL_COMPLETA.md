@@ -460,3 +460,54 @@ permanece com ressalva por falta de credencial.
 
 **Bug encontrado durante esta passagem:** BUG-003 (frases sem verbo na "Atividade recente"),
 corrigido e revalidado ao vivo — ver `BUG_TRACKER.md`.
+
+---
+
+## 📇 Conteúdo real — o que já foi aplicado (2026-07-20)
+
+Fontes **verificadas**: site público `medconsultoria.com.br` (+ política de privacidade) e a
+pasta `brand/`. Nada aqui foi inventado.
+
+### Aplicado no código — `packages/shared/src/constants/institucional.ts` (fonte única)
+
+| Dado | Valor real | Onde já aparece |
+|---|---|---|
+| Nome | MedConsultoria | documentos, e-mails |
+| Posicionamento | Gestão estratégica para clínicas e consultórios | cabeçalho do documento |
+| E-mail comercial | comercial@medconsultoria.com.br | rodapé de documento e e-mail |
+| Telefone | (11) 94072-3055 | rodapé do documento |
+| Site público | medconsultoria.com.br | rodapé de documento e e-mail |
+| Cidade | São Paulo, SP | disponível |
+| Instagram | @med.consultoria | disponível |
+| Fundadora/CEO | Thaís Garcia — administradora, +20 anos em saúde | disponível |
+
+**Bug corrigido junto:** o rodapé de **todo documento enviado ao cliente** apontava para
+`workspace.medconsultoria.com.br` — a URL **interna** do sistema — e para `contato@`
+(que não é o e-mail divulgado). Agora usa o site público e o e-mail comercial reais.
+Regressão em `apps/api/src/test/institucional.test.ts`.
+
+### Catálogo de serviços — confere com o site ✅
+
+Os 5 pilares do site (**Gestão Operacional · Faturamento Inteligente · Networking e Parcerias ·
+Desenvolvimento e Marketing · Consultoria em Gestão de Clínicas**) já batem com as categorias
+do catálogo da aplicação. Nenhuma correção necessária.
+
+### ⛔ Ainda BLOQUEADO — só a Thaís pode fornecer
+
+Estão em `PENDENTE_THAIS` com valor `null` **de propósito**, com teste que falha se alguém
+preencher com exemplo (um CNPJ fictício em contrato assinado é risco jurídico):
+
+| Dado | Por que é necessário | Onde falta |
+|---|---|---|
+| **Razão social completa** | qualificação das partes | contrato |
+| **CNPJ** | qualificação das partes | contrato, recibo |
+| **Endereço completo** | qualificação das partes | contrato |
+| **Foro de eleição** | cláusula de foro | contrato |
+
+Não constam no site nem na política de privacidade — foram procurados em ambos.
+
+### Demais itens do §7.2 (pendentes de revisão com a Thaís)
+
+Equipe/usuários reais · subserviços e preços de tabela · operadoras · hospitais ·
+categorias e origens · textos dos modelos de documento · textos dos modelos de e-mail ·
+mensagens automáticas · formulários/briefings · texto jurídico dos contratos.
