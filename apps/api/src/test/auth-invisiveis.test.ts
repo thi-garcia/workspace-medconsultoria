@@ -4,16 +4,17 @@ import { loginSchema } from "@app/shared";
 /**
  * Trava do BUG-012: o dono não conseguia entrar porque copiava o e-mail do `docs/ACESSOS.md`,
  * que trazia **espaços de largura zero** (U+200B) grudados. Na tela lia-se
- * `root@medconsultoria.com.br`; o que chegava era `​​root@…​`, e o validador
+ * `root@medconsultoria.com.br`; o que chegava tinha U+200B nas pontas, e o validador
  * recusava com "E-mail inválido" — sem nenhuma pista do porquê, nem em aba anônima.
  *
  * Estes testes protegem a limpeza. Se alguém "limpar" a classe de caracteres invisíveis do
- * schema (ela parece um colchete quase vazio), eles falham.
+ * schema, eles falham.
  */
-const ZWSP = "​";
-const BOM = "﻿";
-const NBSP = " ";
-const RLM = "‏";
+// Sem literais invisíveis no arquivo: além de ilegíveis, quebram o lint.
+const ZWSP = String.fromCharCode(0x200b); // espaço de largura zero
+const BOM = String.fromCharCode(0xfeff); // marca de ordem de byte
+const NBSP = String.fromCharCode(0x00a0); // espaço rígido
+const RLM = String.fromCharCode(0x200f); // marca de direção
 
 describe("login tolera caracteres invisíveis colados", () => {
   it("aceita o e-mail exatamente como veio do documento (o caso real)", () => {

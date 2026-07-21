@@ -7,9 +7,12 @@ import { z } from "zod";
  *
  * Não aparecem na tela — a pessoa vê `root@medconsultoria.com.br`, digita/cola isso, e o
  * validador recusa com "E-mail inválido" sem nenhuma pista do porquê. Foi exatamente o que
- * impediu o dono de entrar: o e-mail chegava como `​​root@…​`.
+ * impediu o dono de entrar: o e-mail chegava com U+200B nas duas pontas.
  */
-const INVISIVEIS = /[​-‏﻿ ]/g;
+// Montada a partir de string com escapes de propósito: escrever os caracteres literalmente
+// deixa a linha ilegível, quebra o lint (no-irregular-whitespace) e qualquer editor pode
+// "limpá-los" sem querer.
+const INVISIVEIS = new RegExp("[\\u200B-\\u200F\\uFEFF\\u00A0]", "g");
 
 /** Limpa invisíveis e normaliza — use em TODO campo que a pessoa possa colar. */
 export const textoColavel = () => z.string().transform((s) => s.replace(INVISIVEIS, "").trim());
