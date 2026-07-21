@@ -65,6 +65,30 @@ function registrarFalha(chave: string): void {
   else reg.count += 1;
 }
 
+/**
+ * Registra uma tentativa de login que FALHOU, para diagnóstico.
+ *
+ * Sem isto, "não consigo entrar" é indepurável: a API responde 200 nos testes, mas o navegador
+ * da pessoa pode estar enviando outro e-mail (autofill) ou outra senha (gerenciador guardou a de
+ * outra conta) — e não havia nenhum registro do que chegou de fato.
+ *
+ * NUNCA grava a senha. Só e-mail tentado, motivo e navegador. Fica visível ao ROOT em
+ * Sistema → Atividade. Best-effort: um erro aqui não pode impedir o fluxo de login.
+ */
+async function registrarTentativaFalha(email: string, motivo: string, userAgent?: string) {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        acao: "login.falhou",
+        entidadeTipo: "auth",
+        dados: { email, motivo, navegador: userAgent?.slice(0, 160) ?? null },
+      },
+    });
+  } catch {
+    /* diagnóstico não pode quebrar o login */
+  }
+}
+
 /** Autentica por e-mail/senha, cria sessão e retorna o usuário público. */
 export async function login(
   input: LoginInput,
@@ -78,12 +102,18 @@ export async function login(
   // Sem passwordHash = convite ainda não aceito → não pode logar.
   if (!user || !user.ativo || user.deletedAt || !user.passwordHash) {
     registrarFalha(chave);
+    await registrarTentativaFalha(
+      input.email,
+      !user ? "conta inexistente" : !user.ativo ? "conta inativa" : user.deletedAt ? "conta removida" : "convite não aceito (sem senha)",
+      userAgent,
+    );
     throw CREDENCIAIS_INVALIDAS;
   }
 
   const ok = await verifyPassword(user.passwordHash, input.password);
   if (!ok) {
     registrarFalha(chave);
+    await registrarTentativaFalha(input.email, "senha não confere", userAgent);
     throw CREDENCIAIS_INVALIDAS;
   }
 

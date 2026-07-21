@@ -19,6 +19,15 @@ export function LoginPage() {
       if (window.location.pathname === "/login") window.history.replaceState({}, "", "/");
       utils.auth.me.invalidate();
     },
+    onError: () => {
+      // Limpa a SENHA e devolve o foco ao e-mail. O gerenciador do navegador costuma guardar a
+      // senha de OUTRA conta: o campo continua parecendo preenchido (pontinhos), a pessoa troca
+      // só o e-mail, tenta de novo e falha igual — sem nunca perceber. Limpar quebra esse laço.
+      setValue("password", "");
+      const senha = document.querySelector<HTMLInputElement>('input[name="password"]');
+      if (senha) senha.value = "";
+      document.querySelector<HTMLInputElement>('input[name="email"]')?.focus();
+    },
   });
   const [showPass, setShowPass] = useState(false);
   // Guarda o e-mail da ÚLTIMA tentativa para mostrá-lo no erro. O navegador costuma

@@ -80,6 +80,26 @@ async function main() {
   }
 
   console.log("─".repeat(78));
+
+  // Tentativas que FALHARAM de verdade (o que o navegador enviou). É isto que transforma
+  // "não consigo entrar" em diagnóstico: mostra o e-mail que chegou e o motivo exato.
+  const recentes = sql(
+    `SELECT DATE_FORMAT(createdAt, '%d/%m %H:%i'),
+            JSON_UNQUOTE(JSON_EXTRACT(dados, '$.email')),
+            JSON_UNQUOTE(JSON_EXTRACT(dados, '$.motivo'))
+     FROM \`ActivityLog\` WHERE acao = 'login.falhou'
+     ORDER BY createdAt DESC LIMIT 10`,
+  );
+  if (recentes) {
+    console.log("\nÚLTIMAS TENTATIVAS QUE FALHARAM (o que o navegador enviou):");
+    for (const linha of recentes.split("\n").filter(Boolean)) {
+      const [quando, email, motivo] = linha.split("\t");
+      console.log(`  ${quando}  ${String(email).padEnd(40)} ${motivo}`);
+    }
+  } else {
+    console.log("\nNenhuma tentativa de login falhou desde a última atualização do servidor.");
+  }
+
   if (falhas) {
     console.log(`\n${falhas} conta(s) com problema.\n`);
   } else {
