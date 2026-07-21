@@ -65,7 +65,7 @@ test.describe.serial("Cenário 8 — financeiro (ADMIN)", () => {
     await page.reload();
     await page.getByRole("button", { name: "Tudo" }).click();
     await page.getByRole("button", { name: "Todas", exact: true }).click();
-    await expect(page.getByText(desc)).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: desc })).toHaveCount(0);
   });
 
   test("carteira Pessoal: conta pessoal aparece só na carteira Pessoal", async ({ page }) => {
@@ -84,11 +84,11 @@ test.describe.serial("Cenário 8 — financeiro (ADMIN)", () => {
     // Aparece na carteira Pessoal
     await page.getByRole("button", { name: "Pessoal", exact: true }).click();
     await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
-    await expect(page.getByText(desc)).toBeVisible();
+    await expect(page.getByRole("row").filter({ hasText: desc })).toBeVisible();
     // NÃO aparece na carteira Empresa (isolamento por carteira)
     await page.getByRole("button", { name: "Empresa", exact: true }).click();
     await page.getByRole("button", { name: "A pagar", exact: true }).first().click();
-    await expect(page.getByText(desc)).toHaveCount(0);
+    await expect(page.getByRole("row").filter({ hasText: desc })).toHaveCount(0);
 
     // Limpeza
     await page.getByRole("button", { name: "Pessoal", exact: true }).click();
