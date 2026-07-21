@@ -36,6 +36,35 @@ if (!parsed.success) {
 
 export const config = parsed.data;
 export const isProd = config.NODE_ENV === "production";
+
+/**
+ * `WEB_ORIGIN` em produção: sem default silencioso.
+ *
+ * O default de desenvolvimento é `http://localhost:4310`. Se a variável faltar no `.env` do
+ * servidor, o app **sobe normalmente** — mas o CORS passa a recusar o domínio real e o cookie de
+ * sessão não volta. Sintoma: ninguém consegue entrar, e **nenhum erro aparece no servidor**.
+ * Falhar aqui custa um minuto; descobrir isso em produção custa muito mais.
+ *
+ * `UPLOADS_DIR` não precisa de verificação aqui: `lib/storage.ts::validarPastaUploads` já exige
+ * caminho ABSOLUTO em produção e testa escrita de verdade antes de o app subir.
+ */
+if (isProd) {
+  const origem = process.env.WEB_ORIGIN;
+  const problema = !origem
+    ? "WEB_ORIGIN não definida"
+    : origem.includes("localhost") || origem.includes("127.0.0.1")
+      ? `WEB_ORIGIN aponta para o ambiente local ("${origem}")`
+      : !origem.startsWith("https://")
+        ? `WEB_ORIGIN sem https ("${origem}") — o cookie de sessão é "secure" em produção e não voltaria`
+        : null;
+  if (problema) {
+    console.error(
+      `❌ Configuração inválida para produção: ${problema}.\n` +
+        "   Defina WEB_ORIGIN no .env do servidor com o domínio público exato (ex.: https://workspace.medconsultoria.com.br).",
+    );
+    process.exit(1);
+  }
+}
 /** IA (OpenAI) disponível = chave presente E não desligada globalmente (IA_ENABLED != false/0). */
 const iaDesligada = ["false", "0", "off", "no"].includes((config.IA_ENABLED ?? "").trim().toLowerCase());
 export const isAiEnabled = !!config.OPENAI_API_KEY && !iaDesligada;
