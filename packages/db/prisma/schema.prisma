@@ -4,6 +4,15 @@
 
 generator client {
   provider = "prisma-client-js"
+  // "native" cobre a máquina onde o `prisma generate` roda. Os demais são gerados JUNTO, para
+  // o servidor.
+  //
+  // Por que é necessário: na TineHost (CloudLinux), o shell do SSH e o processo do Passenger
+  // reportam OpenSSL DIFERENTES. O generate rodado por SSH produzia só o engine
+  // `debian-openssl-1.1.x`, e o app subia normalmente na mão — mas sob o Passenger estourava
+  // `Prisma Client could not locate the Query Engine for runtime "debian-openssl-1.0.x"`,
+  // devolvendo HTTP 500 sem nenhuma pista na página.
+  binaryTargets = ["native", "debian-openssl-1.0.x", "debian-openssl-1.1.x", "debian-openssl-3.0.x"]
 }
 
 datasource db {
