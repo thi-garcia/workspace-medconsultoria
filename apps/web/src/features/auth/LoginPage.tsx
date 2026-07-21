@@ -42,10 +42,23 @@ export function LoginPage() {
     formState: { errors },
   } = useForm<LoginInput>({ resolver: zodResolver(loginSchema) });
 
-  const enviar = handleSubmit((data) => {
-    setEmailTentado(data.email);
-    login.mutate(data);
-  });
+  const avisarBloqueio = trpc.auth.registrarBloqueioNoNavegador.useMutation();
+
+  const enviar = handleSubmit(
+    (data) => {
+      setEmailTentado(data.email);
+      login.mutate(data);
+    },
+    (erros) => {
+      // Validação barrou aqui: NENHUMA requisição de login sai. Sem este aviso, o servidor não
+      // registra nada e "não consigo entrar" fica indepurável — foi o que aconteceu duas vezes.
+      const motivo = Object.entries(erros)
+        .map(([campo, e]) => `${campo}: ${e?.message ?? "inválido"}`)
+        .join(" · ");
+      const email = document.querySelector<HTMLInputElement>('input[name="email"]')?.value ?? "";
+      avisarBloqueio.mutate({ email: email.slice(0, 200), motivo: motivo.slice(0, 200) });
+    },
+  );
 
   return (
     <AuthShell>

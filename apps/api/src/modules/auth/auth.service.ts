@@ -89,6 +89,21 @@ async function registrarTentativaFalha(email: string, motivo: string, userAgent?
   }
 }
 
+/** Idem, para o caso em que o NAVEGADOR barrou antes de enviar (validação do formulário). */
+export async function registrarBloqueioCliente(email: string, motivo: string, userAgent?: string) {
+  try {
+    await prisma.activityLog.create({
+      data: {
+        acao: "login.bloqueado_no_navegador",
+        entidadeTipo: "auth",
+        dados: { email, motivo, navegador: userAgent?.slice(0, 160) ?? null },
+      },
+    });
+  } catch {
+    /* diagnóstico não pode quebrar nada */
+  }
+}
+
 /** Autentica por e-mail/senha, cria sessão e retorna o usuário público. */
 export async function login(
   input: LoginInput,

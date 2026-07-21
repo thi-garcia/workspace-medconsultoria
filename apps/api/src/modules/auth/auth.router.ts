@@ -21,6 +21,7 @@ import {
   solicitarReset,
   validarReset,
   redefinirSenha,
+  registrarBloqueioCliente,
 } from "./auth.service.js";
 
 const cookieOptions = {
@@ -40,6 +41,22 @@ export const authRouter = router({
     ctx.res.setCookie(SESSION_COOKIE, sid, cookieOptions);
     return user;
   }),
+
+  /**
+   * Registra um login que o NAVEGADOR barrou antes de sair (validação do formulário).
+   *
+   * Ponto cego que custou dois diagnósticos errados: quando o campo não passa na validação do
+   * cliente, nenhuma requisição chega ao servidor — logo, não havia registro nenhum e "não
+   * consigo entrar" ficava indepurável. Agora fica.
+   *
+   * Só grava e-mail e motivo; NUNCA a senha. Protegido pelo rate-limit global do servidor.
+   */
+  registrarBloqueioNoNavegador: publicProcedure
+    .input(z.object({ email: z.string().max(200), motivo: z.string().max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      await registrarBloqueioCliente(input.email, input.motivo, ctx.req.headers["user-agent"]);
+      return { ok: true };
+    }),
 
   /** Encerra a sessão atual. */
   logout: publicProcedure.mutation(async ({ ctx }) => {
