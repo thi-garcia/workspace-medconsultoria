@@ -53,3 +53,6 @@ AUDITORIA_FUNCIONAL_COMPLETA.html
 
 # Dumps de segurança do banco (podem conter dados reais — nunca versionar)
 backups/
+
+# Pacote temporario de deploy (gerado por build:deploy + tar)
+apps/api/bundle-*.tar.gz
