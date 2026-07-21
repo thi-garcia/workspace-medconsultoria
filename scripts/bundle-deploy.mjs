@@ -6,6 +6,7 @@
 //
 // Rode DEPOIS de `pnpm build`. Uso: node scripts/bundle-deploy.mjs
 import { readFileSync, writeFileSync, cpSync, rmSync, existsSync } from "node:fs";
+import * as esbuild from "esbuild";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -27,9 +28,32 @@ rmSync(pub, { recursive: true, force: true });
 cpSync(resolve(root, "apps/web/dist"), pub, { recursive: true });
 
 // 2) Prisma (schema + migrations) → dist/prisma
+// Só o que o servidor precisa. Os `.ts` NÃO servem lá: o bundle é instalado com
+// `npm install --omit=dev`, então não existe tsx/typescript para executá-los.
 const prismaDst = resolve(apiDist, "prisma");
 rmSync(prismaDst, { recursive: true, force: true });
-cpSync(resolve(root, "packages/db/prisma"), prismaDst, { recursive: true });
+cpSync(resolve(root, "packages/db/prisma"), prismaDst, {
+  recursive: true,
+  // `demo-seed.ts` semeia dados FICTÍCIOS — não tem o que fazer num servidor. `seed.ts` é
+  // compilado logo abaixo para `seed.js`.
+  filter: (src) => !/(demo-)?seed\.ts$/.test(src),
+});
+
+// 2a) Seed → dist/prisma/seed.js (ESM, executável com `node`)
+// Sem isto o bundle levava apenas `seed.ts` e o passo `node prisma/seed.js` do checklist de
+// deploy era IMPOSSÍVEL no servidor — o primeiro usuário ROOT nunca seria criado.
+await esbuild.build({
+  entryPoints: [resolve(root, "packages/db/prisma/seed.ts")],
+  outfile: resolve(prismaDst, "seed.js"),
+  bundle: true,
+  format: "esm",
+  platform: "node",
+  target: "node20",
+  // Mesmas externas do server: Prisma Client e argon2 são nativos/CJS e são instalados no
+  // servidor. `dotenv` idem (está nas dependencies do bundle).
+  external: ["@prisma/client", ".prisma/client", "@node-rs/argon2", "dotenv"],
+  logLevel: "warning",
+});
 
 // 2b) Preflight → dist/preflight.mjs
 // Vai JUNTO do bundle de propósito: o checklist de deploy manda rodá-lo NO SERVIDOR, antes de

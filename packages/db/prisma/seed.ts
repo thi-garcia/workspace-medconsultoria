@@ -4,7 +4,12 @@ import { PrismaClient } from "@prisma/client";
 import { hash } from "@node-rs/argon2";
 import { STAGE_DEFAULTS, EQUIPE_REAL } from "../src/seed-config";
 
-// Carrega o .env da raiz do monorepo.
+// Carrega o .env dos dois lugares possíveis (o primeiro que existir vence; `dotenv` não
+// sobrescreve o que já está em process.env):
+//   - `./.env`      → NO SERVIDOR, o seed roda da raiz do app (`node prisma/seed.js`)
+//   - `../../.env`  → em desenvolvimento, roda de `packages/db` (raiz do monorepo)
+// Sem a primeira linha, o seed não achava o .env no servidor e falhava por falta de senha.
+config({ path: resolve(process.cwd(), ".env") });
 config({ path: resolve(process.cwd(), "../../.env") });
 
 const prisma = new PrismaClient();
