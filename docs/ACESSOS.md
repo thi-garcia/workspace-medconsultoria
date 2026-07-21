@@ -31,6 +31,11 @@ os usuários fictícios. Crie-os pelo fluxo real da aplicação:
 - **funcionário** → **Ajustes → Equipe e acessos → convidar** (o convite chega por e-mail);
 - **cliente** → cadastre o cliente e use **"Enviar acesso ao Portal"** na ficha dele.
 
+> ⚠️ **A senha real é a do `.env` (`SEED_ROOT_PASSWORD`)**, não a que está escrita aqui. Hoje as
+> duas coincidem (`medconsultoria123` — conferido). Se alguém mudar o `.env`, **este documento
+> passa a mentir** e o `pnpm acessos` continuará dando ✓ (ele testa com a senha do `.env`).
+> Ao trocar a senha, atualize esta tabela.
+
 ### ❓ Não está conseguindo entrar?
 
 Rode **`pnpm acessos`**. Ele testa o login de cada conta contra a aplicação no ar e diz o
