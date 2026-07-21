@@ -229,3 +229,29 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
   (a conta vence em breve) e a linha da tabela. Num banco com dados de execuções anteriores o
   painel já estava cheio e o caso não aparecia; num banco novo, dava strict-mode violation.
 - **Solução:** asserção escopada na linha da tabela (`getByRole("row").filter(...)`).
+
+---
+
+## BUG-011 — Login: senha de outra conta ficava presa no campo (laço invisível)
+- **Status:** 🟢 corrigido
+- **Severidade:** média — mantinha a pessoa travada mesmo com o e-mail certo
+- **Módulo/rota:** `/login` — `apps/web/src/features/auth/LoginPage.tsx`
+- **Relato do dono:** *"não estou conseguindo logar com root e nem admin"* (2ª ocorrência,
+  depois do BUG-008 já corrigido).
+- **O laço:** o gerenciador do navegador guarda a senha de **outra** conta (aqui,
+  `cliente@medconsultoria.com.br`, removida na limpeza). A pessoa troca **só o e-mail** — o campo
+  de senha continua **parecendo preenchido** (pontinhos) — tenta de novo, falha igual, e não tem
+  como perceber que a senha enviada não é a que ela imagina.
+- **Solução (2 frentes):**
+  1. **UI:** ao falhar, a senha é **limpa** e o foco volta para o e-mail. Quebra o laço — a
+     próxima tentativa é obrigatoriamente digitada.
+  2. **Diagnóstico:** toda tentativa que falha vira `login.falhou` no `ActivityLog`, com o
+     **e-mail tentado**, o **motivo exato** (conta inexistente · conta inativa · convite não
+     aceito · senha não confere) e o navegador. **Nunca grava a senha.** Visível ao ROOT em
+     Sistema → Atividade e resumido por `pnpm acessos`.
+- **Por que instrumentar:** nas duas ocorrências a API respondia 200 nos meus testes e o
+  navegador do dono falhava — sem registro do que chegava de fato, o diagnóstico virava chute.
+  Agora "não consigo entrar" tem resposta em uma linha.
+- **Verificação:** provocada uma falha com e-mail certo + senha de outra conta → erro exibido com
+  o e-mail tentado, senha limpa (`value === ""`), foco no e-mail, e a tentativa registrada como
+  `senha não confere`.
