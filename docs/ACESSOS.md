@@ -108,7 +108,7 @@ No topo de qualquer tela há uma **busca global**. Aperte **Ctrl + K** (ou cliqu
 
 ---
 
-## 🧑‍💼 Portal do Cliente (área do cliente)
+## 🧑💼 Portal do Cliente (área do cliente)
 
 O cliente entra pelo **mesmo endereço** (http://localhost:4310) com um login de papel **CLIENTE** e cai num ambiente **separado e isolado** — ele nunca vê o menu interno nem dados de outros clientes.
 

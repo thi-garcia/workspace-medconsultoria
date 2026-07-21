@@ -255,3 +255,30 @@ Histórico de bugs encontrados na auditoria funcional (Bloco 3+). Para cada um: 
 - **Verificação:** provocada uma falha com e-mail certo + senha de outra conta → erro exibido com
   o e-mail tentado, senha limpa (`value === ""`), foco no e-mail, e a tentativa registrada como
   `senha não confere`.
+
+---
+
+## BUG-012 — "E-mail inválido" com o e-mail certo: caracteres INVISÍVEIS colados
+- **Status:** 🟢 corrigido
+- **Severidade:** **CRÍTICA** — impediu o dono de entrar com ROOT e ADMIN por dois dias
+- **Módulo:** `packages/shared/src/schemas/auth.ts` (`loginSchema`)
+- **Relato:** *"Aparece 'E-mail inválido'. Apertei F12 e não aparece nenhum erro no console.
+  Tentei na aba anônima e também não entrou."*
+- **Causa:** ao copiar o e-mail do `docs/ACESSOS.md` (da pré-visualização renderizada do
+  markdown), vinham **espaços de largura zero** (U+200B) colados. Na tela lia-se
+  `root@medconsultoria.com.br`; o que chegava ao schema era `​​root@…​`, e
+  `z.string().email()` recusava. **Invisível por definição** — não dá para ver no campo, não gera
+  erro de console, e a aba anônima não ajuda (não é autofill).
+- **Como foi encontrado:** só depois de instrumentar o login (BUG-011 + PR #40). O log
+  `login.bloqueado_no_navegador` registrou o e-mail tentado, e o `HEX()` dele no MySQL revelou
+  `E2808B` nas pontas. **Sem a instrumentação, este bug era invisível dos dois lados.**
+- **Solução:** `emailColavel()` / `textoColavel()` limpam U+200B–U+200F, U+FEFF e U+00A0
+  **antes** de validar o formato; aplicado a e-mail **e** senha do login (gerenciadores colam
+  BOM/espaço rígido na ponta). Também removido o invisível encontrado no `ACESSOS.md` — mas a
+  correção real é no schema, porque o caractere vem do **renderizador**, não do arquivo.
+- **Regressão:** `apps/api/src/test/auth-invisiveis.test.ts` (6 testes) — inclui o caso real
+  byte a byte, e garante que e-mail de verdade inválido e senha em branco **continuam recusados**
+  (a limpeza não pode mascarar campo vazio).
+- **Verificação:** enviado à API o e-mail exato do log (com os ZWSP) → **HTTP 200, entrou**.
+- **Lição:** foram três hipóteses erradas antes (conta apagada, autofill, senha de outra conta).
+  O que resolveu não foi tentar de novo — foi **instrumentar e olhar os bytes**.
