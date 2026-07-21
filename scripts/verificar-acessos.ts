@@ -87,15 +87,16 @@ async function main() {
     `SELECT DATE_FORMAT(createdAt, '%d/%m %H:%i'),
             JSON_UNQUOTE(JSON_EXTRACT(dados, '$.email')),
             JSON_UNQUOTE(JSON_EXTRACT(dados, '$.motivo'))
-     FROM \`ActivityLog\` WHERE acao = 'login.falhou'
+     FROM \`ActivityLog\` WHERE acao IN ('login.falhou', 'login.bloqueado_no_navegador')
      ORDER BY createdAt DESC LIMIT 10`,
   );
   if (recentes) {
-    console.log("\nÚLTIMAS TENTATIVAS QUE FALHARAM (o que o navegador enviou):");
+    console.log("\nÚLTIMAS TENTATIVAS QUE FALHARAM:");
     for (const linha of recentes.split("\n").filter(Boolean)) {
       const [quando, email, motivo] = linha.split("\t");
       console.log(`  ${quando}  ${String(email).padEnd(40)} ${motivo}`);
     }
+    console.log("  (motivo com 'email:'/'password:' = o NAVEGADOR barrou; nada chegou ao servidor)");
   } else {
     console.log("\nNenhuma tentativa de login falhou desde a última atualização do servidor.");
   }
