@@ -31,6 +31,12 @@ const prismaDst = resolve(apiDist, "prisma");
 rmSync(prismaDst, { recursive: true, force: true });
 cpSync(resolve(root, "packages/db/prisma"), prismaDst, { recursive: true });
 
+// 2b) Preflight → dist/preflight.mjs
+// Vai JUNTO do bundle de propósito: o checklist de deploy manda rodá-lo NO SERVIDOR, antes de
+// publicar (checa Node, Argon2, UPLOADS_DIR gravável, MySQL, migrations, DNS, rede). Se ele
+// ficasse só no repositório, o passo seria impossível de executar lá — a TineHost não tem Git.
+cpSync(resolve(root, "scripts/preflight.mjs"), resolve(apiDist, "preflight.mjs"));
+
 // 3) package.json de produção — só deps externas de runtime (sem workspace:*)
 const api = JSON.parse(readFileSync(resolve(root, "apps/api/package.json"), "utf8"));
 const db = JSON.parse(readFileSync(resolve(root, "packages/db/package.json"), "utf8"));
@@ -71,4 +77,4 @@ import("./server.js").catch((e) => { console.error("Falha ao iniciar server.js:"
 `;
 writeFileSync(resolve(apiDist, "app.cjs"), startup);
 
-console.log("✓ Bundle pronto em apps/api/dist/ (server.js + public/ + prisma/ + package.json + app.cjs)");
+console.log("✓ Bundle pronto");
