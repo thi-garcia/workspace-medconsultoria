@@ -424,13 +424,15 @@ export function AppLayout() {
           {/* Mobile: título da página (referência de onde o usuário está — breadcrumb some no celular). */}
           <span className="min-w-0 flex-1 truncate text-base font-semibold text-foreground md:hidden">{pageTitle}</span>
 
-          {/* Zona CENTRAL (desktop): busca com largura fixa → posição estável em toda página. */}
-          <div className="hidden w-full max-w-md shrink-0 md:block">
+          {/* Zona CENTRAL (desktop): as três zonas são `flex-1`, então a busca fica no centro
+              exato. O botão é capado em `max-w-md` mas ENCOLHE quando o espaço aperta (tablet),
+              evitando overflow — todas as zonas têm `min-w-0`. */}
+          <div className="hidden min-w-0 flex-1 justify-center md:flex">
             <button
               onClick={() => setCmdkOpen(true)}
               aria-label="Buscar"
               aria-keyshortcuts="Control+K Meta+K"
-              className="group flex w-full items-center gap-2.5 rounded-lg border bg-background px-3.5 py-2 text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="group flex w-full max-w-md items-center gap-2.5 rounded-lg border bg-background px-3.5 py-2 text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {ia.data?.disponivel ? (
                 <Sparkles className="h-4 w-4 shrink-0 text-primary" />
