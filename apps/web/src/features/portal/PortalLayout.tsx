@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { LogOut, UserCog, ChevronDown, Lock } from "lucide-react";
+import { LogOut, UserCog, ChevronDown, Lock, HelpCircle } from "lucide-react";
+import { GuiaPortal } from "./GuiaPortal";
 import { useAuth } from "../../lib/auth-context";
 import { trpc } from "../../lib/trpc";
 import { Avatar, AvatarUpload } from "../../components/ui/avatar";
@@ -233,19 +234,29 @@ function EditarPerfilModal({ open, onClose }: { open: boolean; onClose: () => vo
 
 export function PortalLayout({ children }: { children: ReactNode }) {
   const [editar, setEditar] = useState(false);
+  const [guia, setGuia] = useState(false);
   return (
     <div className="min-h-screen bg-muted/30">
       <header className="sticky top-0 z-30 border-b bg-card/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-card/80">
         <div className="mx-auto flex h-16 max-w-4xl items-center gap-3 px-4">
           <img src="/logo.png" alt="MedConsultoria" className="h-8 w-auto" />
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-1">
+            <button
+              onClick={() => setGuia(true)}
+              className="rounded-md p-2 text-muted-foreground outline-none transition-colors hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary/40"
+              title="Guia do Portal"
+              aria-label="Guia de instruções"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
             <ProfileMenu onEditar={() => setEditar(true)} />
           </div>
         </div>
       </header>
       <main className="mx-auto max-w-4xl px-4 py-6 md:py-8">{children}</main>
-      {/* Modal FORA do header: um ancestral com backdrop-filter prende elementos position:fixed. */}
+      {/* Modais FORA do header: um ancestral com backdrop-filter prende elementos position:fixed. */}
       <EditarPerfilModal open={editar} onClose={() => setEditar(false)} />
+      <GuiaPortal open={guia} onClose={() => setGuia(false)} />
     </div>
   );
 }

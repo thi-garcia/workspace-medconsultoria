@@ -34,7 +34,7 @@ import { cn } from "@app/ui";
 import { hasRoleLevel, type Role } from "@app/shared";
 import { useAuth } from "../lib/auth-context";
 
-interface Passo {
+export interface Passo {
   icon: LucideIcon;
   titulo: string;
   descricao: React.ReactNode;
@@ -289,19 +289,29 @@ export function guiaDaRota(path: string): Guia {
 }
 
 /**
- * Guia de instruções por página. O botão "?" do header abre o guia da tela atual:
- * no Dashboard mostra a visão geral (10 passos); nas demais, o passo a passo daquela página.
+ * Modal VISUAL do guia (sem acoplamento com o router). Recebe título + passos e desenha o
+ * carrossel. Usado tanto pelo `GuiaTour` da equipe quanto pelo Portal do Cliente — assim o
+ * cliente também tem um "?", com o mesmo visual.
  */
-export function GuiaTour({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useAuth();
-  const path = useRouterState({ select: (s) => s.location.pathname });
-  const guia = guiaDaRota(path);
-  const passos = guia.passos.filter((p) => !p.minRole || hasRoleLevel(user.role, p.minRole));
+export function GuiaModal({
+  open,
+  onClose,
+  titulo,
+  passos,
+  resetKey,
+}: {
+  open: boolean;
+  onClose: () => void;
+  titulo: string;
+  passos: Passo[];
+  /** Muda para reiniciar no passo 0 (ex.: trocou de rota). */
+  resetKey?: string;
+}) {
   const [i, setI] = useState(0);
 
   useEffect(() => {
     if (open) setI(0);
-  }, [open, path]);
+  }, [open, resetKey]);
 
   useEffect(() => {
     if (!open) return;
@@ -346,7 +356,7 @@ export function GuiaTour({ open, onClose }: { open: boolean; onClose: () => void
               <Icon className="h-8 w-8" />
             </span>
           )}
-          <span className="text-[11px] font-medium uppercase tracking-wider text-white/70">Guia · {guia.titulo}</span>
+          <span className="text-[11px] font-medium uppercase tracking-wider text-white/70">Guia · {titulo}</span>
         </div>
 
         <div className="flex min-h-0 flex-1 flex-col p-6">
@@ -402,4 +412,17 @@ export function GuiaTour({ open, onClose }: { open: boolean; onClose: () => void
     </div>,
     document.body,
   );
+}
+
+/**
+ * Guia "?" da ÁREA DA EQUIPE. Resolve o guia pela rota atual e filtra passos por papel, depois
+ * delega o visual ao GuiaModal. No Dashboard mostra a visão geral (10 passos); nas demais, o
+ * passo a passo daquela página. O guia do Portal do Cliente vive em `features/portal`.
+ */
+export function GuiaTour({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useAuth();
+  const path = useRouterState({ select: (s) => s.location.pathname });
+  const guia = guiaDaRota(path);
+  const passos = guia.passos.filter((p) => !p.minRole || hasRoleLevel(user.role, p.minRole));
+  return <GuiaModal open={open} onClose={onClose} titulo={guia.titulo} passos={passos} resetKey={path} />;
 }
