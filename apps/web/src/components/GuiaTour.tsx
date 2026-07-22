@@ -208,7 +208,9 @@ const GUIA_DOCUMENTOS: Passo[] = [
 ];
 
 const GUIA_MENSAGENS: Passo[] = [
-  { icon: MessageSquare, titulo: "Mensagens internas", descricao: "Converse com a equipe e acompanhe o canal de suporte de cada cliente. As novas mensagens avisam no sino de notificações." },
+  { icon: MessageSquare, titulo: "Tudo num só lugar", descricao: "Conversas com a equipe, grupos e o suporte de cada cliente ficam juntos, separados nas abas Diretas, Grupos, Clientes e Leads. Comece uma nova no botão + Nova conversa." },
+  { icon: UserCheck, titulo: "Suporte do cliente (helpdesk)", descricao: "Cada chamado de um cliente é um ticket com protocolo, assunto, status (Aberto / Em andamento / Resolvido), prioridade e responsável. O cliente vê a mesma conversa pelo Portal." },
+  { icon: CheckCircle2, titulo: "No dia a dia", descricao: "Novas mensagens avisam no sino. Você pode editar ou apagar a própria mensagem, e fixar, silenciar ou arquivar uma conversa. As arquivadas ficam na aba Arquivadas." },
 ];
 
 // ── Ajustes (o hub de configuração) ──────────────────────
@@ -242,11 +244,15 @@ const GUIA_USUARIOS: Passo[] = [
 ];
 
 const GUIA_CONFIG: Passo[] = [
-  { icon: Settings, titulo: "Suas configurações", descricao: "Atualize seu nome, e-mail e senha, e escolha quais e-mails automáticos você quer receber. Os de acesso e segurança são sempre enviados." },
+  { icon: UserCheck, titulo: "Seu perfil", descricao: "Atualize seu nome e sua foto — ela aparece em toda a aplicação (avatar). O e-mail e o papel são definidos pela administração." },
+  { icon: Settings, titulo: "Sua senha", descricao: "Troque a senha quando quiser. Ao trocar, as outras sessões são encerradas por segurança — você continua conectado só aqui." },
+  { icon: Mail, titulo: "Preferências de e-mail", descricao: "Escolha quais e-mails automáticos quer receber. Os de acesso e segurança (convite, redefinição de senha) são sempre enviados." },
 ];
 
 const GUIA_SISTEMA: Passo[] = [
-  { icon: ServerCog, titulo: "Painel do sistema", descricao: "Visível só para o Root: saúde, desempenho, erros, sessões e manutenção da aplicação. Use o Diagnóstico para uma visão rápida." },
+  { icon: ServerCog, titulo: "Painel técnico (só Root)", descricao: "A saúde da aplicação em tempo real: banco, memória, event loop e taxa de erro. As abas separam Visão geral, Incidentes, Desempenho, Banco, Erros, Sessões, Atividade e Manutenção." },
+  { icon: ListChecks, titulo: "Erros e incidentes", descricao: "Erros capturados automaticamente ficam na aba Erros — resolva, oculte ou peça a análise da IA. Incidentes registram quedas e degradações, com o histórico de uptime." },
+  { icon: Sparkles, titulo: "Diagnóstico e manutenção", descricao: "Use o Diagnóstico com IA no topo para uma leitura rápida do estado. Em Manutenção você limpa sessões expiradas e vê as migrações do banco e a configuração do ambiente." },
 ];
 
 // A ORDEM importa: `guiaDaRota` casa por prefixo, então rotas mais específicas vêm ANTES das
