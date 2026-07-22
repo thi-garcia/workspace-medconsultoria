@@ -1,30 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Command } from "cmdk";
 import { useNavigate } from "@tanstack/react-router";
-import {
-  LayoutDashboard,
-  Users,
-  Filter,
-  FolderKanban,
-  Calendar,
-  Wallet,
-  MessageSquare,
-  FileText,
-  Settings,
-  UserCog,
-  Briefcase,
-  Mail,
-  SlidersHorizontal,
-  Sparkles,
-  Loader2,
-  Search,
-  SendHorizontal,
-  type LucideIcon,
-} from "lucide-react";
+import { Users, Filter, FolderKanban, FileText, Sparkles, Loader2, Search, SendHorizontal, type LucideIcon } from "lucide-react";
 import { cn } from "@app/ui";
-import { hasRoleLevel, type Role } from "@app/shared";
+import { hasRoleLevel } from "@app/shared";
 import { trpc } from "../lib/trpc";
 import { useAuth } from "../lib/auth-context";
+import { PAGINAS, paginaCasa } from "../lib/paginas";
 
 interface Hit {
   tipo: "cliente" | "lead" | "projeto" | "documento";
@@ -37,23 +19,6 @@ interface Msg {
   autor: "user" | "ia";
   texto: string;
 }
-
-const PAGINAS: { label: string; icon: LucideIcon; to: string; minRole: Role }[] = [
-  { label: "Início", icon: LayoutDashboard, to: "/", minRole: "FUNCIONARIO" },
-  { label: "Vendas", icon: Filter, to: "/leads", minRole: "FUNCIONARIO" },
-  { label: "Clientes", icon: Users, to: "/clientes", minRole: "FUNCIONARIO" },
-  { label: "Projetos", icon: FolderKanban, to: "/projetos", minRole: "FUNCIONARIO" },
-  { label: "Agenda", icon: Calendar, to: "/agenda", minRole: "FUNCIONARIO" },
-  { label: "Mensagens", icon: MessageSquare, to: "/mensagens", minRole: "FUNCIONARIO" },
-  { label: "Documentos", icon: FileText, to: "/documentos", minRole: "FUNCIONARIO" },
-  { label: "Financeiro", icon: Wallet, to: "/financeiro", minRole: "ADMIN" },
-  { label: "Ajustes", icon: SlidersHorizontal, to: "/ajustes", minRole: "ADMIN" },
-  { label: "Serviços", icon: Briefcase, to: "/servicos", minRole: "ADMIN" },
-  { label: "Mensagens automáticas", icon: Mail, to: "/emails", minRole: "ADMIN" },
-  { label: "Equipe e acessos", icon: UserCog, to: "/usuarios", minRole: "ADMIN" },
-  { label: "E-mails enviados", icon: SendHorizontal, to: "/emails-enviados", minRole: "ADMIN" },
-  { label: "Configurações", icon: Settings, to: "/configuracoes", minRole: "FUNCIONARIO" },
-];
 
 const TIPO_META: Record<Hit["tipo"], { icon: LucideIcon; grupo: string }> = {
   cliente: { icon: Users, grupo: "Clientes" },
@@ -118,9 +83,7 @@ export function CommandPalette({
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [conversa, perguntar.isPending]);
 
-  const paginas = PAGINAS.filter((p) => hasRoleLevel(user.role, p.minRole)).filter((p) =>
-    q.trim() ? p.label.toLowerCase().includes(q.trim().toLowerCase()) : true,
-  );
+  const paginas = PAGINAS.filter((p) => hasRoleLevel(user.role, p.minRole)).filter((p) => paginaCasa(p, q));
 
   const irPara = (hit: Hit) => {
     onOpenChange(false);
