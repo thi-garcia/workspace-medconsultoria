@@ -414,18 +414,25 @@ export function AppLayout() {
             <Menu className="h-5 w-5" />
           </button>
 
-          <Breadcrumbs />
+          {/* Zona ESQUERDA (desktop): contexto/breadcrumb. `flex-1` para equilibrar a direita e
+              manter a busca no CENTRO EXATO — antes a busca deslizava conforme o tamanho do
+              breadcrumb (curto no Início, longo nas fichas), parecendo desalinhada. */}
+          <div className="hidden min-w-0 flex-1 md:flex">
+            <Breadcrumbs />
+          </div>
 
           {/* Mobile: título da página (referência de onde o usuário está — breadcrumb some no celular). */}
           <span className="min-w-0 flex-1 truncate text-base font-semibold text-foreground md:hidden">{pageTitle}</span>
 
-          {/* Desktop: busca global proeminente (command palette), com dica de IA quando disponível. */}
-          <div className="hidden flex-1 justify-center md:flex">
+          {/* Zona CENTRAL (desktop): as três zonas são `flex-1`, então a busca fica no centro
+              exato. O botão é capado em `max-w-md` mas ENCOLHE quando o espaço aperta (tablet),
+              evitando overflow — todas as zonas têm `min-w-0`. */}
+          <div className="hidden min-w-0 flex-1 justify-center md:flex">
             <button
               onClick={() => setCmdkOpen(true)}
               aria-label="Buscar"
               aria-keyshortcuts="Control+K Meta+K"
-              className="group flex w-full max-w-xl items-center gap-2.5 rounded-lg border bg-background px-3.5 py-2 text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="group flex w-full max-w-md items-center gap-2.5 rounded-lg border bg-background px-3.5 py-2 text-sm text-muted-foreground shadow-sm outline-none transition-colors hover:border-primary/40 hover:bg-accent/40 focus-visible:ring-2 focus-visible:ring-primary/40"
             >
               {ia.data?.disponivel ? (
                 <Sparkles className="h-4 w-4 shrink-0 text-primary" />
@@ -439,7 +446,8 @@ export function AppLayout() {
             </button>
           </div>
 
-          <div className="flex shrink-0 items-center gap-1">
+          {/* Zona DIREITA: ações. `md:flex-1 md:justify-end` fecha o equilíbrio com a esquerda. */}
+          <div className="flex shrink-0 items-center gap-1 md:flex-1 md:justify-end">
             {/* Mobile: busca vira ícone (o título ocupa o espaço). */}
             <button
               onClick={() => setCmdkOpen(true)}

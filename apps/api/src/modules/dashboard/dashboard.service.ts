@@ -219,7 +219,11 @@ async function montarGestao(hojeInicio: Date, em7: Date, d7: Date, d14: Date, d3
       },
     }),
     prisma.activityLog.findMany({
-      where: { NOT: { acao: "login" } },
+      // "Atividade recente" é um feed de NEGÓCIO (criou cliente, gerou documento…). Eventos
+      // técnicos de autenticação — login e os de diagnóstico (login.falhou,
+      // login.bloqueado_no_navegador) — não têm o que fazer aqui: poluíam o widget com
+      // "Alguém registrou: login bloqueado no navegador". Ficam no painel Sistema → Atividade.
+      where: { NOT: { acao: { startsWith: "login" } } },
       orderBy: { createdAt: "desc" },
       take: 8,
       include: { user: { select: { nome: true } } },
