@@ -53,13 +53,24 @@ describe("guias por página (botão ?)", () => {
     }
   });
 
-  it("todo guia tem ao menos um passo com título e descrição", () => {
+  it("todo guia é COMPLETO: ≥ 2 passos, cada um com título e descrição de verdade", () => {
     for (const rota of rotasDoRouter()) {
       const g = guiaDaRota(rota);
-      expect(g.passos.length, `${rota} sem passos`).toBeGreaterThan(0);
+      // ≥ 2 evita guia magro de um passo só (Mensagens/Config/Sistema já eram assim).
+      expect(g.passos.length, `${rota} tem menos de 2 passos — guia raso`).toBeGreaterThanOrEqual(2);
       for (const p of g.passos) {
-        expect(p.titulo.trim().length, `${rota}: passo sem título`).toBeGreaterThan(0);
-        expect(typeof p.descricao === "string" ? p.descricao.trim().length : 1).toBeGreaterThan(0);
+        expect(p.titulo.trim().length, `${rota}: passo sem título`).toBeGreaterThan(2);
+        const desc = typeof p.descricao === "string" ? p.descricao.trim().length : 40;
+        expect(desc, `${rota}: descrição curta demais`).toBeGreaterThan(30);
+      }
+    }
+  });
+
+  it("não sobrou texto de renomeação '(era …)' nos passos", () => {
+    for (const rota of rotasDoRouter()) {
+      for (const p of guiaDaRota(rota).passos) {
+        const txt = typeof p.descricao === "string" ? p.descricao : "";
+        expect(/\(era [""]/.test(txt + p.titulo), `${rota}: resíduo de rename`).toBe(false);
       }
     }
   });

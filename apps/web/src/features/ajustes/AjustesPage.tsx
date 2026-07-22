@@ -41,7 +41,7 @@ const SECOES: { titulo: string; descricao: string; itens: AjusteItem[] }[] = [
       {
         icon: Mail,
         label: "Mensagens automáticas",
-        desc: "Os textos dos e-mails e avisos que o sistema envia sozinho — com a marca da empresa. (era “Comunicações”)",
+        desc: "Os textos dos e-mails e avisos que o sistema envia sozinho — com a marca da empresa.",
         to: "/emails",
       },
     ],
@@ -77,7 +77,7 @@ const SECOES: { titulo: string; descricao: string; itens: AjusteItem[] }[] = [
       {
         icon: UserCog,
         label: "Equipe e acessos",
-        desc: "Quem entra no sistema e o que cada pessoa pode fazer (equipe e acessos do Portal). (era “Usuários”)",
+        desc: "Quem entra no sistema e o que cada pessoa pode fazer (equipe e acessos do Portal).",
         to: "/usuarios",
       },
       {
