@@ -27,6 +27,8 @@ import {
   ServerCog,
   Settings,
   FileText,
+  SlidersHorizontal,
+  SendHorizontal,
 } from "lucide-react";
 import { cn } from "@app/ui";
 import { hasRoleLevel, type Role } from "@app/shared";
@@ -209,10 +211,29 @@ const GUIA_MENSAGENS: Passo[] = [
   { icon: MessageSquare, titulo: "Mensagens internas", descricao: "Converse com a equipe e acompanhe o canal de suporte de cada cliente. As novas mensagens avisam no sino de notificações." },
 ];
 
+// ── Ajustes (o hub de configuração) ──────────────────────
+const GUIA_AJUSTES: Passo[] = [
+  { icon: SlidersHorizontal, titulo: "Configure uma vez, o sistema usa sozinho", descricao: "Aqui ficam as configurações que você define uma vez e a aplicação aplica no dia a dia. Você raramente precisa voltar." },
+  { icon: Briefcase, titulo: "Automações", descricao: "Serviços (o catálogo e o que cada um dispara na venda), Modelos de documento (os textos-base de proposta, contrato, ata e recibo) e Mensagens automáticas (os e-mails e avisos que o sistema envia com a marca da empresa)." },
+  { icon: ListChecks, titulo: "Catálogos", descricao: "Listas reutilizáveis: Categorias (financeiro), Origens (de onde vêm os leads) e Operadoras (para credenciamento). Você também as edita onde são usadas — aqui estão todas num lugar só." },
+  { icon: UserCog, titulo: "Administração", descricao: "Atalhos para Equipe e acessos, E-mails enviados (monitor de entregas) e, para o Root, o painel Sistema." },
+];
+
+const GUIA_MODELOS: Passo[] = [
+  { icon: FileSignature, titulo: "Os moldes dos seus documentos", descricao: "Cada modelo é o texto-base de um tipo de documento — proposta, contrato, escopo, recibo, briefing — reutilizado sempre que você gera um documento para um cliente." },
+  { icon: FileText, titulo: "Campos que se preenchem sozinhos", descricao: "No texto, campos como {{cliente.nome}} são trocados pelos dados reais na hora de gerar. O preview ao lado mostra como a folha A4 fica, com a marca da empresa." },
+  { icon: Sparkles, titulo: "Briefings interativos", descricao: "Modelos do tipo briefing viram um formulário que o cliente responde na tela pelo Portal (texto, escolha, checklist…). Os documentos de cada cliente você gera na ficha dele e acompanha em Documentos." },
+];
+
 const GUIA_COMUNICACOES: Passo[] = [
-  { icon: Mail, titulo: "E-mails e notificações", descricao: "Todos os textos automáticos do sistema ficam aqui, separados por Transacionais, Notificações e Sistema. Edite só o conteúdo — o visual é fixo." },
+  { icon: Mail, titulo: "Mensagens automáticas", descricao: "Todos os textos dos e-mails e avisos que o sistema envia sozinho ficam aqui, separados por Transacionais, Notificações e Sistema. Edite só o conteúdo — o visual com a marca é fixo." },
   { icon: Sparkles, titulo: "Campos automáticos", descricao: "Clique nos “campos automáticos” para inseri-los no texto — o sistema preenche com o dado real no envio (ex.: nome do cliente)." },
   { icon: CheckCircle2, titulo: "Prévia e teste", descricao: "Veja a prévia ao vivo (e-mail e sino) e envie um e-mail de teste antes de salvar. Restaure o padrão quando quiser." },
+];
+
+const GUIA_EMAILS_ENVIADOS: Passo[] = [
+  { icon: SendHorizontal, titulo: "Monitor de e-mails enviados", descricao: "O registro de tudo que o sistema disparou: convites, boas-vindas, links de assinatura, lembretes. Veja quantos saíram, quantos falharam e o motivo de cada falha." },
+  { icon: Filter, titulo: "Filtros", descricao: "Filtre por status (enviados / só falhas), tipo de e-mail e período. Use quando um cliente disser que não recebeu — aqui você confirma se saiu e o que aconteceu." },
 ];
 
 const GUIA_USUARIOS: Passo[] = [
@@ -228,23 +249,34 @@ const GUIA_SISTEMA: Passo[] = [
   { icon: ServerCog, titulo: "Painel do sistema", descricao: "Visível só para o Root: saúde, desempenho, erros, sessões e manutenção da aplicação. Use o Diagnóstico para uma visão rápida." },
 ];
 
+// A ORDEM importa: `guiaDaRota` casa por prefixo, então rotas mais específicas vêm ANTES das
+// que as contêm (`/emails-enviados` antes de `/emails`). Os títulos batem com os rótulos do
+// menu lateral — divergências ("Comunicações"/"Usuários") confundiam. O teste em GuiaTour.test
+// garante que toda rota de página tenha um guia próprio e que a ordem de prefixos esteja correta.
 const OUTRAS: { prefixo: string; guia: Guia }[] = [
   { prefixo: "/leads", guia: { titulo: "Vendas", passos: GUIA_FUNIL } },
   { prefixo: "/clientes", guia: { titulo: "Clientes", passos: GUIA_CLIENTES } },
   { prefixo: "/servicos", guia: { titulo: "Serviços", passos: GUIA_SERVICOS } },
+  { prefixo: "/modelos", guia: { titulo: "Modelos de documento", passos: GUIA_MODELOS } },
   { prefixo: "/projetos", guia: { titulo: "Projetos", passos: GUIA_PROJETOS } },
   { prefixo: "/agenda", guia: { titulo: "Agenda", passos: GUIA_AGENDA } },
   { prefixo: "/financeiro", guia: { titulo: "Financeiro", passos: GUIA_FINANCEIRO } },
   { prefixo: "/documentos", guia: { titulo: "Documentos", passos: GUIA_DOCUMENTOS } },
   { prefixo: "/mensagens", guia: { titulo: "Mensagens", passos: GUIA_MENSAGENS } },
-  { prefixo: "/emails", guia: { titulo: "Comunicações", passos: GUIA_COMUNICACOES } },
-  { prefixo: "/usuarios", guia: { titulo: "Usuários", passos: GUIA_USUARIOS } },
+  { prefixo: "/ajustes", guia: { titulo: "Ajustes", passos: GUIA_AJUSTES } },
+  // `/emails-enviados` ANTES de `/emails` — senão o prefixo mais curto captura os dois.
+  { prefixo: "/emails-enviados", guia: { titulo: "E-mails enviados", passos: GUIA_EMAILS_ENVIADOS } },
+  { prefixo: "/emails", guia: { titulo: "Mensagens automáticas", passos: GUIA_COMUNICACOES } },
+  { prefixo: "/usuarios", guia: { titulo: "Equipe e acessos", passos: GUIA_USUARIOS } },
   { prefixo: "/configuracoes", guia: { titulo: "Configurações", passos: GUIA_CONFIG } },
   { prefixo: "/sistema", guia: { titulo: "Sistema", passos: GUIA_SISTEMA } },
 ];
 
+/** Prefixos mapeados, na ordem — exportado para o teste-guarda conferir ordem e cobertura. */
+export const PREFIXOS_GUIA = OUTRAS.map((o) => o.prefixo);
+
 /** Resolve o guia da página a partir da rota atual. */
-function guiaDaRota(path: string): Guia {
+export function guiaDaRota(path: string): Guia {
   if (path === "/") return { titulo: "Visão geral", passos: VISAO_GERAL };
   const achado = OUTRAS.find((o) => path.startsWith(o.prefixo));
   return achado?.guia ?? { titulo: "Visão geral", passos: VISAO_GERAL };
